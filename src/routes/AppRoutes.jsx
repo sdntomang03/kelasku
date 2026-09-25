@@ -636,6 +636,7 @@ function AppContent({ routeKind, examId, questionId }) {
           {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} onDetail={() => navigate('/results/detail')} />}
           {page === 'profile' && <ProfilePage student={student} />}
         </div>
+        <footer className="app-footer">Copyright @2026</footer>
       </main>
     </div>
   )
