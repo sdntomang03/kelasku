@@ -15,7 +15,12 @@ export function examRequiresToken(exam) {
 }
 
 export function examShowsExplanation(exam, result) {
-  return Boolean(result?.show_explanation ?? result?.config?.show_explanation ?? exam?.show_explanation ?? exam?.config?.show_explanation)
+  const value = exam?.show_explanation
+    ?? exam?.config?.show_explanation
+    ?? result?.exam?.show_explanation
+    ?? result?.show_explanation
+    ?? result?.config?.show_explanation
+  return value === true || value === 1 || value === '1' || value === 'true'
 }
 
 export function getSchoolName(student) {

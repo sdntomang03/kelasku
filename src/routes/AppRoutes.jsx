@@ -8,7 +8,7 @@ import { dashboardService } from '../services/dashboardService'
 import { examService } from '../services/examService'
 import { getErrorMessage } from '../utils/api'
 import { randomizeQuestion, shuffle } from '../utils/question'
-import { examRequiresToken, examShowsExplanation, getClassName, getSchoolName, isExamCompleted, isExamLocked } from '../utils/exam'
+import { examRequiresToken, getClassName, getSchoolName, isExamCompleted, isExamLocked } from '../utils/exam'
 import { useExamAttempt } from '../hooks/useExamAttempt'
 import { useExamAutosave } from '../hooks/useExamAutosave'
 import { useExamTimer } from '../hooks/useExamTimer'
@@ -20,6 +20,8 @@ import ResultsPage from '../pages/ResultsPage'
 import ProfilePage from '../pages/ProfilePage'
 import TokenPage from '../pages/TokenPage'
 import ExamAttemptPage from '../pages/ExamAttemptPage'
+import QuestionDiscussionPage from '../pages/QuestionDiscussionPage'
+import { attemptService } from '../services/attemptService'
 
 function Logo() {
   return <div className="brand"><span className="brand-mark">C</span><span>kelas<span className="brand-accent">ku</span></span></div>
@@ -35,6 +37,8 @@ export default function AppRoutes() {
       <Route path="/exams/:examId/token" element={<RouteEntry routeKind="exam-token" />} />
       <Route path="/exams/:examId/attempt" element={<RouteEntry routeKind="exam" />} />
       <Route path="/results" element={<RouteEntry routeKind="results" />} />
+      <Route path="/results/discussion" element={<RouteEntry routeKind="discussion" />} />
+      <Route path="/results/discussion/:questionId" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/profile" element={<RouteEntry routeKind="profile" />} />
       <Route path="*" element={<RouteEntry routeKind="dashboard" />} />
     </Routes>
@@ -42,11 +46,11 @@ export default function AppRoutes() {
 }
 
 function RouteEntry({ routeKind }) {
-  const { examId } = useParams()
-  return <AppContent routeKind={routeKind} examId={examId} />
+  const { examId, questionId } = useParams()
+  return <AppContent routeKind={routeKind} examId={examId} questionId={questionId} />
 }
 
-function AppContent({ routeKind, examId }) {
+function AppContent({ routeKind, examId, questionId }) {
   const navigate = useNavigate()
 
   const [authenticated, setAuthenticated] = useState(() => Boolean(localStorage.getItem('cbt_token')))
@@ -67,6 +71,7 @@ function AppContent({ routeKind, examId }) {
   const [integritySeconds, setIntegritySeconds] = useState(10)
   const [integrityAction, setIntegrityAction] = useState(null)
   const [examResult, setExamResult] = useState(null)
+  const [discussion, setDiscussion] = useState(null)
   const [examConfig, setExamConfig] = useState({ random_question: false, random_answer: false })
   const [violationState, setViolationState] = useState({ count: 0, max: 0, locked: false, warning: false })
   const [profileOpen, setProfileOpen] = useState(false)
@@ -224,8 +229,26 @@ function AppContent({ routeKind, examId }) {
   useEffect(() => {
     if (routeKind !== 'results' || !attemptId || !authenticated) return undefined
     let cancelled = false
-    apiRequest(`/attempts/${attemptId}/result`)
-      .then((data) => { if (!cancelled) setExamResult(data) })
+    attemptService.result(attemptId)
+      .then((result) => { if (!cancelled) setExamResult(result) })
+      .catch((error) => { if (!cancelled) setDataError(getErrorMessage(error)) })
+    return () => { cancelled = true }
+  }, [routeKind, attemptId, authenticated])
+
+  useEffect(() => {
+    if (routeKind !== 'discussion' || !authenticated) return undefined
+    let cancelled = false
+    let discussionAttemptId = attemptId
+    if (!discussionAttemptId) {
+      try {
+        discussionAttemptId = JSON.parse(localStorage.getItem('cbt_discussion_context') || '{}').attemptId
+      } catch {
+        discussionAttemptId = null
+      }
+    }
+    if (!discussionAttemptId) return undefined
+    attemptService.discussion(discussionAttemptId)
+      .then((data) => { if (!cancelled) setDiscussion(data) })
       .catch((error) => { if (!cancelled) setDataError(getErrorMessage(error)) })
     return () => { cancelled = true }
   }, [routeKind, attemptId, authenticated])
@@ -251,6 +274,36 @@ function AppContent({ routeKind, examId }) {
     setSelectedExam({ ...exam })
     navigate(`/exams/${exam.id}`)
   }, [navigate])
+
+  const openExplanation = useCallback((exam) => {
+    try {
+      const selected = exams.find((item) => String(item.id) === String(exam.id)) || exam
+      const showExplanation = selected.show_explanation === true || selected.show_explanation === 1 || selected.show_explanation === '1' || selected.show_explanation === 'true'
+      if (!showExplanation) {
+        setDataError('Pembahasan belum diaktifkan untuk ujian ini.')
+        return
+      }
+      const storedAttempt = localStorage.getItem(`cbt_completed_attempt_${exam.id}`)
+      const cachedAttempt = storedAttempt ? JSON.parse(storedAttempt) : null
+      const matchingAttempt = String(selectedExam?.id) === String(exam.id)
+        ? selectedExam.attempt || selectedExam.attempt_id
+        : exam.attempt || exam.attempt_id || cachedAttempt
+      if (!matchingAttempt?.id && !matchingAttempt) {
+        setDataError('Attempt selesai untuk pembahasan ujian ini tidak ditemukan.')
+        return
+      }
+      setSelectedExam({ ...selected, attempt: matchingAttempt.id ? matchingAttempt : { id: matchingAttempt } })
+      setExamResult(null)
+      setDiscussion(null)
+      localStorage.setItem('cbt_discussion_context', JSON.stringify({
+        exam: selected,
+        attemptId: matchingAttempt.id || matchingAttempt,
+      }))
+      navigate('/results/discussion')
+    } catch (error) {
+      setDataError(getErrorMessage(error))
+    }
+  }, [exams, navigate, selectedExam])
 
   const openTokenPage = useCallback(() => {
     setExamToken('')
@@ -374,6 +427,7 @@ function AppContent({ routeKind, examId }) {
         new Promise((resolve) => setTimeout(resolve, 3000)),
       ])
       setExamResult(result)
+      localStorage.setItem(`cbt_completed_attempt_${selectedExam.id}`, JSON.stringify({ id: attemptId }))
       const [dashboardData, examData] = await Promise.all([dashboardService.get(), examService.list()])
       setDashboard(dashboardData)
       setExams(Array.isArray(examData) ? examData : [])
@@ -429,6 +483,21 @@ function AppContent({ routeKind, examId }) {
     )
   }
 
+  if (page === 'discussion') {
+    const questions = discussion?.questions || []
+    const foundIndex = questionId ? questions.findIndex((question) => String(question.id) === String(questionId)) : 0
+    const currentIndex = Math.max(0, foundIndex)
+    return <QuestionDiscussionPage
+      question={questions[currentIndex]}
+      index={currentIndex}
+      total={questions.length}
+      onBack={() => navigate('/exams')}
+      onPrevious={() => navigate(`/results/discussion/${questions[currentIndex - 1]?.id}`)}
+      onNext={() => currentIndex === questions.length - 1 ? navigate('/exams') : navigate(`/results/discussion/${questions[currentIndex + 1]?.id}`)}
+      isLast={currentIndex === questions.length - 1}
+    />
+  }
+
   if (page === 'exam-token') {
     return (
       <TokenPage
@@ -469,9 +538,9 @@ function AppContent({ routeKind, examId }) {
         {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
         <div className="content-wrap">
           {page === 'dashboard' && <DashboardPage onExam={openExam} onPage={(target) => navigate(target === 'exams' ? '/exams' : '/results')} exams={exams} completed={completed} student={student} dashboard={dashboard} />}
-          {page === 'exams' && <ExamListPage exams={exams} onExam={openExam} />}
+          {page === 'exams' && <ExamListPage exams={exams} onExam={openExam} onExplanation={openExplanation} />}
           {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : () => startExam('start')} />}
-          {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={examShowsExplanation(currentExam, examResult)} />}
+          {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} />}
           {page === 'profile' && <ProfilePage student={student} />}
         </div>
       </main>
