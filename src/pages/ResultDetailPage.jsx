@@ -1,4 +1,8 @@
 import Icon from '../components/common/Icon'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
+import { Doughnut } from 'react-chartjs-2'
+
+ChartJS.register(ArcElement, Tooltip, Legend)
 
 export default function ResultDetailPage({ detail, loading, error, onBack, onDiscussion }) {
   const sections = detail?.detail_nilai || []
@@ -21,10 +25,29 @@ function ExamScoreSummary({ detail }) {
 function SectionScoreCard({ section }) {
   const pointBased = section.is_point_based === true
   const score = section.display_score ?? section.nilai ?? section.score
-  const label = section.score_label || (pointBased ? 'Point' : 'Nilai 100')
+  const label = section.score_label || (pointBased ? 'Point' : 'Point')
   const maximum = section.maximum
   const questionCount = getQuestionCount(section)
-  return <article className="section-score-card"><div className="section-score-heading"><div><strong>{section.section_name || section.name || 'Section'}</strong><span>{questionCount} soal</span></div><b>{score ?? '—'}</b></div><div className="section-score-stats"><span className="correct"><b>{section.benar ?? 0}</b> Benar</span><span className="incorrect"><b>{section.salah ?? 0}</b> Salah</span><span className="unanswered"><b>{section.tidak_dijawab ?? 0}</b> Tidak dijawab</span></div><div className="section-score-meta"><span>Diperoleh <b>{section.earned ?? '—'}</b></span><span>Maksimal <b>{maximum ?? '—'}</b></span><span>{label}</span></div></article>
+  const chartData = {
+    labels: ['Benar', 'Salah', 'Tidak dijawab'],
+    datasets: [{
+      data: [section.benar ?? 0, section.salah ?? 0, section.tidak_dijawab ?? 0],
+      backgroundColor: ['#2baa78', '#ed6b78', '#efa64f'],
+      borderColor: '#fff',
+      borderWidth: 4,
+      hoverOffset: 6,
+    }],
+  }
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '72%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { padding: 10, displayColors: true },
+    },
+  }
+  return <article className="section-score-card"><div className="section-score-heading"><div><strong>{section.section_name || section.name || 'Section'}</strong><span>{questionCount} soal</span></div><div className="section-score-value"><b>{score ?? '—'}</b><small>{label}</small></div></div><div className="section-score-visual"><div className="section-score-chart"><Doughnut data={chartData} options={chartOptions} /><span><b>{score ?? '—'}</b><small>{pointBased ? 'Point' : 'Nilai'}</small></span></div><div className="section-score-stats"><span className="correct"><b>{section.benar ?? 0}</b><small>Benar</small></span><span className="incorrect"><b>{section.salah ?? 0}</b><small>Salah</small></span><span className="unanswered"><b>{section.tidak_dijawab ?? 0}</b><small>Tidak dijawab</small></span></div></div><div className="section-score-meta"><span>Diperoleh <b>{section.earned ?? '—'}</b></span><span>Maksimal <b>{maximum ?? '—'}</b></span><span>{label}</span></div></article>
 }
 
 function getQuestionCount(section) {

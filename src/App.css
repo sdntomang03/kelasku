@@ -196,6 +196,21 @@
 .result-detail-sections{box-shadow:0 5px 18px rgba(25,33,58,.035)}
 .section-score-card{border-radius:12px;box-shadow:none;transition:border-color .2s,box-shadow .2s,transform .2s}
 .section-score-card:hover{border-color:#cbc5ff;box-shadow:0 8px 20px rgba(81,64,191,.08);transform:translateY(-1px)}
+.section-score-value{display:flex;align-items:flex-end;flex-direction:column;gap:3px}
+.section-score-value b{color:var(--purple);font:800 21px Manrope,sans-serif}
+.section-score-value small{color:var(--muted);font-size:9px;font-weight:700}
+.section-score-visual{display:flex;align-items:center;gap:24px;margin:20px 0 16px}
+.section-score-chart{position:relative;width:142px;height:142px;flex:0 0 142px}
+.section-score-chart>span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;pointer-events:none}
+.section-score-chart>span b{color:var(--ink);font:800 22px Manrope,sans-serif}
+.section-score-chart>span small{margin-top:2px;color:var(--muted);font-size:9px}
+.section-score-visual .section-score-stats{display:grid;grid-template-columns:1fr;gap:10px;flex:1}
+.section-score-visual .section-score-stats span{display:grid;grid-template-columns:28px 1fr;align-items:center;gap:8px}
+.section-score-visual .section-score-stats b{font:800 15px Manrope,sans-serif}
+.section-score-visual .section-score-stats small{color:var(--muted);font-size:10px}
+.section-score-visual .section-score-stats .correct b{color:#299568}
+.section-score-visual .section-score-stats .incorrect b{color:#d65d6b}
+.section-score-visual .section-score-stats .unanswered b{color:#d38a3e}
 .result-detail-discussion-button{border-radius:9px;background:var(--purple);box-shadow:0 8px 18px rgba(105,86,216,.18)}
 .result-detail-discussion-button:hover{background:var(--purple-dark)}
 @media(max-width:700px){
@@ -212,6 +227,8 @@
   .results-page .result-row{align-items:flex-start;flex-wrap:wrap}
   .results-page .result-row .score{margin-left:auto}
   .results-page .result-row .score-label{width:100%;margin-left:50px}
+  .section-score-visual{gap:16px}
+  .section-score-chart{width:126px;height:126px;flex-basis:126px}
 }
 
 /* Modern exam workspace */
