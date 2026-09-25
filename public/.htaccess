@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Biarkan file dan folder hasil build yang benar-benar ada dilayani langsung.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Semua route React dikembalikan ke entry point SPA.
+  RewriteRule ^ index.html [L]
+</IfModule>
