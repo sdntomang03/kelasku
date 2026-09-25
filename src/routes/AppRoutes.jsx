@@ -111,6 +111,7 @@ function AppContent({ routeKind, examId, questionId }) {
   const attemptId = attempt?.id || selectedExam?.attempt?.id || selectedExam?.attempt_id || storedResultContext.attemptId
   const currentQuestionId = questionIds[activeQuestion]
   const currentQuestion = currentQuestionId ? questions[currentQuestionId] : null
+  const fallbackQuestion = currentQuestion || Object.values(questions)[0] || null
   const attemptStorageKey = examId ? `cbt_exam_attempt_${examId}` : ''
   const completed = useMemo(() => exams.filter(isExamCompleted), [exams])
   const answeredCount = Object.keys(answers).length
@@ -161,7 +162,7 @@ function AppContent({ routeKind, examId, questionId }) {
   }, [authenticated, routeKind, examId])
 
   useEffect(() => {
-    if (routeKind !== 'exam' || !examId || attemptId || !authenticated) return undefined
+    if (routeKind !== 'exam' || !examId || !authenticated || questionIds.length) return undefined
     const stored = localStorage.getItem(`cbt_exam_attempt_${examId}`)
     if (!stored) return undefined
     try {
@@ -192,7 +193,7 @@ function AppContent({ routeKind, examId, questionId }) {
       localStorage.removeItem(`cbt_exam_attempt_${examId}`)
     }
     return undefined
-  }, [routeKind, examId, attemptId, authenticated, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setViolationState])
+  }, [routeKind, examId, authenticated, questionIds.length, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setViolationState])
 
   useEffect(() => {
     if (routeKind !== 'exam' || !attemptId || !currentQuestionId) return undefined
@@ -546,7 +547,8 @@ function AppContent({ routeKind, examId, questionId }) {
     return (
       <ExamAttemptPage
         exam={currentExam}
-        question={currentQuestion}
+        question={fallbackQuestion}
+        questionLoading={Boolean(currentQuestionId && !currentQuestion)}
         questionIds={questionIds}
         activeQuestion={activeQuestion}
         setActiveQuestion={setActiveQuestion}
