@@ -23,5 +23,16 @@ function SectionScoreCard({ section }) {
   const score = section.display_score ?? section.nilai ?? section.score
   const label = section.score_label || (pointBased ? 'Point' : 'Nilai 100')
   const maximum = section.maximum
-  return <article className="section-score-card"><div className="section-score-heading"><div><strong>{section.section_name || section.name || 'Section'}</strong><span>{section.question_count ?? '—'} soal</span></div><b>{score ?? '—'}</b></div><div className="section-score-stats"><span className="correct"><b>{section.benar ?? 0}</b> Benar</span><span className="incorrect"><b>{section.salah ?? 0}</b> Salah</span><span className="unanswered"><b>{section.tidak_dijawab ?? 0}</b> Tidak dijawab</span></div><div className="section-score-meta"><span>Diperoleh <b>{section.earned ?? '—'}</b></span><span>Maksimal <b>{maximum ?? '—'}</b></span><span>{label}</span></div></article>
+  const questionCount = getQuestionCount(section)
+  return <article className="section-score-card"><div className="section-score-heading"><div><strong>{section.section_name || section.name || 'Section'}</strong><span>{questionCount} soal</span></div><b>{score ?? '—'}</b></div><div className="section-score-stats"><span className="correct"><b>{section.benar ?? 0}</b> Benar</span><span className="incorrect"><b>{section.salah ?? 0}</b> Salah</span><span className="unanswered"><b>{section.tidak_dijawab ?? 0}</b> Tidak dijawab</span></div><div className="section-score-meta"><span>Diperoleh <b>{section.earned ?? '—'}</b></span><span>Maksimal <b>{maximum ?? '—'}</b></span><span>{label}</span></div></article>
+}
+
+function getQuestionCount(section) {
+  const explicitCount = section.question_count ?? section.total_questions ?? section.metadata?.question_count ?? section.metadata?.total_questions
+  if (explicitCount !== null && explicitCount !== undefined && explicitCount !== '') return explicitCount
+  const correct = Number(section.benar)
+  const wrong = Number(section.salah)
+  const unanswered = Number(section.tidak_dijawab)
+  if ([correct, wrong, unanswered].every(Number.isFinite)) return correct + wrong + unanswered
+  return 0
 }
