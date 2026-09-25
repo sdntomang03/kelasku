@@ -198,6 +198,7 @@
 .exam-tip{margin-top:24px;padding:14px;border:1px solid #e0e7ff;border-radius:12px;background:#fafaff}
 .exam-tip strong{color:#4338ca;font-size:10px}
 .exam-tip p{margin:5px 0 0;color:#64748b;font-size:10px;line-height:1.55}
+.dashboard-empty-state{display:flex;min-height:150px;align-items:center;justify-content:center;flex-direction:column;gap:7px;border:1px dashed #dfe3ee;border-radius:12px;background:#fbfcff;color:#7d849a;text-align:center}.dashboard-empty-state svg{color:#9b8eea;margin-bottom:3px}.dashboard-empty-state strong{color:#505a73;font-size:12px}.dashboard-empty-state span{font-size:10px}
 .question-area{width:100%;max-width:1050px;margin:0 auto;padding:42px clamp(18px,5vw,70px) 48px}
 .question-toolbar{margin-bottom:22px}
 .question-meta,.question-tools{gap:10px}
