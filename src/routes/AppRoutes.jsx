@@ -335,7 +335,10 @@ function AppContent({ routeKind, examId }) {
     if (!selectedExam || !attemptId || isFinishing) return
     setIsFinishing(true)
     try {
-      const result = await apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} })
+      const [result] = await Promise.all([
+        apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} }),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ])
       setExamResult(result)
       const [dashboardData, examData] = await Promise.all([dashboardService.get(), examService.list()])
       setDashboard(dashboardData)
