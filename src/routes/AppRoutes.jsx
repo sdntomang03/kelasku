@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiRequest } from '../api/client'
 import Icon from '../components/common/Icon'
+import IntegrityModal from '../components/common/IntegrityModal'
 import { authService } from '../services/authService'
 import { dashboardService } from '../services/dashboardService'
 import { examService } from '../services/examService'
@@ -62,6 +63,9 @@ function AppContent({ routeKind, examId }) {
   const [tokenError, setTokenError] = useState('')
   const [isTokenLoading, setIsTokenLoading] = useState(false)
   const [isFinishing, setIsFinishing] = useState(false)
+  const [integrityOpen, setIntegrityOpen] = useState(false)
+  const [integritySeconds, setIntegritySeconds] = useState(10)
+  const [integrityAction, setIntegrityAction] = useState(null)
   const [examResult, setExamResult] = useState(null)
   const [examConfig, setExamConfig] = useState({ random_question: false, random_answer: false })
   const [violationState, setViolationState] = useState({ count: 0, max: 0, locked: false, warning: false })
@@ -69,6 +73,20 @@ function AppContent({ routeKind, examId }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
   const [timeLeft, setTimeLeft] = useState(76 * 60 + 24)
+
+  useEffect(() => {
+    if (!integrityOpen) return undefined
+    const timer = setInterval(() => {
+      setIntegritySeconds((seconds) => {
+        if (seconds <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return seconds - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [integrityOpen])
 
   const examAttempt = useExamAttempt(null)
   const saveAnswerRequest = useExamAutosave(examAttempt.attempt?.id || selectedExam?.attempt?.id || selectedExam?.attempt_id)
@@ -252,6 +270,7 @@ function AppContent({ routeKind, examId }) {
     }
     setTokenError('')
     setIsTokenLoading(true)
+    let hasExistingAnswers
     try {
       const data = await apiRequest(`/exams/${selectedExam.id}/start`, {
         method: 'POST',
@@ -270,6 +289,7 @@ function AppContent({ routeKind, examId }) {
       setQuestionIds(questionOrder)
       setQuestions({})
       setAnswers(data.existing_answers || {})
+      hasExistingAnswers = Object.keys(data.existing_answers || {}).length > 0
       setDoubtful(data.flags || [])
       if (typeof data.attempt?.remaining_seconds === 'number') setTimeLeft(data.attempt.remaining_seconds)
       localStorage.setItem(`cbt_exam_attempt_${selectedExam.id}`, JSON.stringify({
@@ -293,9 +313,23 @@ function AppContent({ routeKind, examId }) {
     } finally {
       setIsTokenLoading(false)
     }
+    if (!hasExistingAnswers) {
+      setIntegritySeconds(10)
+      setIntegrityAction({ mode: 'attempt' })
+      setIntegrityOpen(true)
+      return
+    }
     setActiveQuestion(0)
     navigate(`/exams/${selectedExam.id}/attempt`)
   }, [navigate, selectedExam, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setQuestions, setTimeLeft, setViolationState])
+
+  const confirmIntegrity = useCallback(() => {
+    if (integritySeconds > 0 || !integrityAction) return
+    setIntegrityOpen(false)
+    setIntegrityAction(null)
+    setActiveQuestion(0)
+    navigate(`/exams/${selectedExam.id}/attempt`)
+  }, [integrityAction, integritySeconds, navigate, selectedExam, setActiveQuestion])
 
   const saveAnswer = useCallback(async (questionId, answer, isDoubtful = doubtful.includes(questionId)) => {
     if (!attemptId) return
@@ -405,6 +439,9 @@ function AppContent({ routeKind, examId }) {
         loading={isTokenLoading}
         onBack={() => navigate(`/exams/${examId}`)}
         onSubmit={() => startExam('start', examToken)}
+        integrityOpen={integrityOpen}
+        integritySeconds={integritySeconds}
+        onIntegrityConfirm={confirmIntegrity}
       />
     )
   }
@@ -427,12 +464,13 @@ function AppContent({ routeKind, examId }) {
         <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span><button>Hubungi kami <Icon name="arrow" size={14} /></button></div><button className="logout-button" onClick={async () => { try { await apiRequest('/logout', { method: 'POST', body: {} }) } finally { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') } }}><Icon name="logout" /> Keluar</button></div>
       </aside>
       <main className="main-content">
-        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><button onClick={() => { setProfileOpen(false); navigate('/profile') }}>Profil saya</button><button onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}>Keluar</button></div>}</div></div></header>
+        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
         {dataError && <div className="api-error">{dataError}</div>}
+        {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
         <div className="content-wrap">
           {page === 'dashboard' && <DashboardPage onExam={openExam} onPage={(target) => navigate(target === 'exams' ? '/exams' : '/results')} exams={exams} completed={completed} student={student} dashboard={dashboard} />}
           {page === 'exams' && <ExamListPage exams={exams} onExam={openExam} />}
-          {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : startExam} />}
+          {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : () => startExam('start')} />}
           {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={examShowsExplanation(currentExam, examResult)} />}
           {page === 'profile' && <ProfilePage student={student} />}
         </div>
