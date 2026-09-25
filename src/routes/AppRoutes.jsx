@@ -73,6 +73,9 @@ function AppContent({ routeKind, examId, questionId }) {
   const [integritySeconds, setIntegritySeconds] = useState(10)
   const [integrityAction, setIntegrityAction] = useState(null)
   const [examResult, setExamResult] = useState(null)
+  const [detailNilai, setDetailNilai] = useState(null)
+  const [detailNilaiLoading, setDetailNilaiLoading] = useState(false)
+  const [detailNilaiError, setDetailNilaiError] = useState('')
   const [discussion, setDiscussion] = useState(null)
   const [examConfig, setExamConfig] = useState({ random_question: false, random_answer: false })
   const [violationState, setViolationState] = useState({ count: 0, max: 0, locked: false, warning: false })
@@ -98,7 +101,14 @@ function AppContent({ routeKind, examId, questionId }) {
   const examAttempt = useExamAttempt(null)
   const saveAnswerRequest = useExamAutosave(examAttempt.attempt?.id || selectedExam?.attempt?.id || selectedExam?.attempt_id)
   const { questionIds, setQuestionIds, activeQuestion, setActiveQuestion, questions, setQuestions, answers, setAnswers, doubtful, setDoubtful, attempt, setAttempt } = examAttempt
-  const attemptId = attempt?.id || selectedExam?.attempt?.id || selectedExam?.attempt_id
+  const storedResultContext = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cbt_result_detail_context') || '{}')
+    } catch {
+      return {}
+    }
+  }, [])
+  const attemptId = attempt?.id || selectedExam?.attempt?.id || selectedExam?.attempt_id || storedResultContext.attemptId
   const currentQuestionId = questionIds[activeQuestion]
   const currentQuestion = currentQuestionId ? questions[currentQuestionId] : null
   const attemptStorageKey = examId ? `cbt_exam_attempt_${examId}` : ''
@@ -229,16 +239,62 @@ function AppContent({ routeKind, examId, questionId }) {
   }, [examId, authenticated])
 
   useEffect(() => {
-    if (!['results', 'result-detail'].includes(routeKind) || !attemptId || !authenticated) return undefined
+    if (routeKind !== 'results' || !attemptId || !authenticated) return undefined
     let cancelled = false
-    attemptService.result(attemptId)
-      .then((result) => { if (!cancelled) setExamResult(result) })
+    Promise.all([
+      attemptService.result(attemptId),
+      routeKind === 'result-detail' ? attemptService.sections(attemptId) : Promise.resolve(null),
+    ])
+      .then(([result, sectionData]) => {
+        if (cancelled) return
+        setExamResult(sectionData ? {
+          ...result,
+          ...sectionData,
+          sections: sectionData.sections || result.sections || [],
+        } : result)
+      })
       .catch((error) => { if (!cancelled) setDataError(getErrorMessage(error)) })
     return () => { cancelled = true }
   }, [routeKind, attemptId, authenticated])
 
   useEffect(() => {
-    if (!['discussion', 'result-detail'].includes(routeKind) || !authenticated) return undefined
+    if (routeKind !== 'result-detail' || !authenticated) return undefined
+    if (!attemptId) {
+      return undefined
+    }
+    let cancelled = false
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return null
+        setDetailNilaiLoading(true)
+        setDetailNilai(null)
+        setDetailNilaiError('')
+        return attemptService.detailNilai(attemptId)
+      })
+      .then((data) => {
+        if (cancelled || !data) return
+        setDetailNilai(data)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setDetailNilai(null)
+        if (error?.status === 401) {
+          localStorage.removeItem('cbt_token')
+          navigate('/login', { replace: true })
+          return
+        }
+        if (error?.status === 400) setDetailNilaiError('Hasil ujian belum tersedia atau ujian belum selesai.')
+        else if (error?.status === 404) setDetailNilaiError('Attempt atau hasil ujian tidak ditemukan.')
+        else setDetailNilaiError(getErrorMessage(error))
+      })
+      .finally(() => {
+        if (!cancelled) setDetailNilaiLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [routeKind, attemptId, authenticated, navigate])
+
+  useEffect(() => {
+    if (routeKind !== 'discussion' || !authenticated) return undefined
     let cancelled = false
     let discussionAttemptId = attemptId
     if (!discussionAttemptId) {
@@ -322,6 +378,10 @@ function AppContent({ routeKind, examId, questionId }) {
         return
       }
       setSelectedExam({ ...exam, attempt: matchingAttempt.id ? matchingAttempt : { id: matchingAttempt } })
+      localStorage.setItem('cbt_result_detail_context', JSON.stringify({
+        examId: exam.id,
+        attemptId: matchingAttempt.id || matchingAttempt,
+      }))
       setExamResult(null)
       setDiscussion(null)
       navigate('/results/detail')
@@ -526,7 +586,7 @@ function AppContent({ routeKind, examId, questionId }) {
   }
 
   if (page === 'result-detail') {
-    return <ResultDetailPage result={examResult} discussion={discussion} onBack={() => navigate('/results')} />
+    return <ResultDetailPage detail={detailNilai} loading={detailNilaiLoading} error={detailNilaiError || (!attemptId ? 'Hasil ujian belum tersedia karena attempt_id tidak ditemukan.' : '')} onBack={() => navigate('/exams')} onDiscussion={openExplanation} />
   }
 
   if (page === 'exam-token') {

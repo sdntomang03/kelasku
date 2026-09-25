@@ -12,5 +12,7 @@ export const attemptService = {
   violation: (attemptId) => apiRequest(`/attempts/${attemptId}/violation`, { method: 'POST', body: {} }),
   submit: (attemptId) => apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} }),
   result: (attemptId) => apiRequest(`/attempts/${attemptId}/result`),
+  sections: (attemptId) => apiRequest(`/attempts/${attemptId}/sections`),
+  detailNilai: (attemptId) => apiRequest(`/attempts/${attemptId}/detail-nilai`),
   discussion: (attemptId) => apiRequest(`/attempts/${attemptId}/discussion`),
 }

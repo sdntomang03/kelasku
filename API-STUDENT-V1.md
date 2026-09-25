@@ -135,7 +135,8 @@ Gunakan nilai tersebut pada endpoint berikut:
 | GET | `/attempts/{attempt}/progress` | Ya | Progress pengerjaan |
 | POST | `/attempts/{attempt}/violation` | Ya | Catat pelanggaran |
 | POST | `/attempts/{attempt}/submit` | Ya | Selesaikan dan score ujian |
-| GET | `/attempts/{attempt}/result` | Ya | Ambil hasil ujian || GET | `/attempts/{attempt}/discussion` | Ya | Ambil pembahasan soal |
+| GET | `/attempts/{attempt}/result` | Ya | Ambil hasil ujian |
+| GET | `/attempts/{attempt}/discussion` | Ya | Ambil pembahasan soal |
 
 ## 1. Login
 
@@ -265,11 +266,17 @@ Response hanya berisi exam/session yang diikuti siswa.
             "end_time": "2026-09-24T12:00:00.000000Z",
             "duration_minutes": 90,
             "show_explanation": true,
+            "require_token": false,
             "status": "not_started",
             "is_open": true,
             "final_score": null,
             "is_locked": false,
-            "total_questions": 40
+            "total_questions": 40,
+            "attempt_id": 123,
+            "attempt": {
+                "id": 123,
+                "status": "not_started"
+            }
         }
     ]
 }
@@ -308,7 +315,12 @@ Response:
         "show_explanation": true,
         "status": "not_started",
         "is_locked": false,
-        "total_questions": 40
+        "total_questions": 40,
+        "attempt_id": 123,
+        "attempt": {
+            "id": 123,
+            "status": "not_started"
+        }
     }
 }
 ```
@@ -605,6 +617,22 @@ Response:
         "status": "completed",
         "average_score": 85,
         "result_mode": "average",
+        "score_display_mode": "percentage",
+        "is_point_based": false,
+        "scoring_profile": {
+            "id": 7,
+            "name": "Skor Standar Sekolah",
+            "type": "standard",
+            "result_mode": "average",
+            "is_point_based": false,
+            "rules": {
+                "type": "standard",
+                "result_mode": "average",
+                "correct": 1,
+                "wrong": 0,
+                "empty": 0
+            }
+        },
         "score": 85,
         "sections": []
     }
@@ -613,7 +641,84 @@ Response:
 
 Result sebelum ujian selesai mengembalikan HTTP `400`.
 
-## 15. Pembahasan Soal
+## 15. Detail Nilai per Section
+
+Endpoint ini untuk frontend React agar dapat menampilkan detail nilai tiap section dan membedakan mode penilaian:
+
+- `average` = nilai skala 100 seperti sekolah
+- `total` = point seperti CPNS/TKP
+
+```http
+GET {{base_url}}/attempts/{{attempt_id}}/sections
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Detail nilai per section berhasil diambil.",
+  "data": {
+    "attempt_id": 123,
+    "exam": {
+      "id": "jR3k",
+      "title": "TKA Matematika",
+      "show_explanation": true
+    },
+    "result_mode": "average",
+    "score_display_mode": "percentage",
+    "is_point_based": false,
+    "scoring_profile": {
+      "id": 7,
+      "name": "Skor Standar Sekolah",
+      "code": "school-standard",
+      "type": "standard",
+      "result_mode": "average",
+      "is_point_based": false,
+      "rules": {
+        "type": "standard",
+        "result_mode": "average",
+        "correct": 1,
+        "wrong": 0,
+        "empty": 0
+      }
+    },
+    "sections": [
+      {
+        "id": 10,
+        "name": "Penalaran Umum",
+        "question_count": 10,
+        "earned": 7,
+        "maximum": 10,
+        "score": 70,
+        "display_score": 70,
+        "result_mode": "average",
+        "score_display_mode": "percentage",
+        "is_point_based": false,
+        "score_label": "Nilai 100",
+        "scoring_profile": {
+          "id": 7,
+          "name": "Skor Standar Sekolah",
+          "type": "standard",
+          "result_mode": "average",
+          "is_point_based": false,
+          "rules": {
+            "type": "standard",
+            "result_mode": "average",
+            "correct": 1,
+            "wrong": 0,
+            "empty": 0
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+Untuk mode point seperti CPNS/TKP, `result_mode` akan bernilai `total`, `score_display_mode` menjadi `points`, dan `display_score` menunjukkan nilai point aktual, bukan persentase dari 100.
+
+## 16. Pembahasan Soal
 
 Pembahasan hanya dapat diambil setelah attempt berstatus `completed`, hanya oleh siswa pemilik attempt, dan hanya jika `show_explanation` pada exam bernilai `true`.
 
