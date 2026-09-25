@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import Icon from '../components/common/Icon'
 import ImageRichContent from '../components/content/ImageRichContent'
 
-export default function QuestionDiscussionPage({ question, index, total, onBack, onPrevious, onNext, isLast }) {
+export default function QuestionDiscussionPage({ question, index, total, questions = [], sections = [], onBack, onPrevious, onNext, isLast }) {
   if (!question) return <div className="empty-state">Pembahasan soal tidak ditemukan.</div>
+  const stats = getQuestionStats(questions)
   return <div className="page-enter discussion-page">
     <button className="back-button" onClick={onBack}><Icon name="arrow" size={15} /> Kembali ke hasil</button>
+    <DiscussionSummary stats={stats} sections={sections} questions={questions} />
     <section className="section-card discussion-card">
       <div className="discussion-header"><div><span className="eyebrow">PEMBAHASAN SOAL {index + 1}</span><h1>Pembahasan soal</h1></div>{question.type !== 'tkp' && <span className={`discussion-result ${question.is_correct ? 'correct' : 'incorrect'}`}>{question.is_correct ? 'Benar' : 'Perlu dipelajari'}</span>}</div>
       <ImageRichContent html={question.content} className="rich-text discussion-question" />
@@ -20,6 +22,37 @@ export default function QuestionDiscussionPage({ question, index, total, onBack,
       <div className="discussion-navigation"><button className="secondary-button" disabled={index === 0} onClick={onPrevious}>Soal sebelumnya</button><span>Soal {index + 1} dari {total}</span><button className="primary-button" onClick={onNext}>{isLast ? 'Kembali ke daftar ujian' : 'Soal berikutnya'} <Icon name="arrow" size={15} /></button></div>
     </section>
   </div>
+}
+
+function DiscussionSummary({ stats, sections, questions }) {
+  const sectionRows = sections.length ? sections : buildSectionRows(questions)
+  return <section className="discussion-summary">
+    <div className="discussion-stat-card"><span>Benar</span><strong>{stats.correct}</strong></div>
+    <div className="discussion-stat-card"><span>Salah</span><strong>{stats.incorrect}</strong></div>
+    <div className="discussion-stat-card"><span>Tidak dijawab</span><strong>{stats.unanswered}</strong></div>
+    {sectionRows.length > 0 && <div className="discussion-sections"><div className="discussion-sections-title">Nilai tiap section</div>{sectionRows.map((section, index) => <div className="discussion-section-row" key={section.id || section.name || index}><span>{section.name || `Section ${index + 1}`}</span><strong>{section.display_score ?? section.score ?? section.average_score ?? '—'}</strong></div>)}</div>}
+  </section>
+}
+
+function getQuestionStats(questions) {
+  return questions.reduce((stats, question) => {
+    const answered = question.answer !== null && question.answer !== undefined && !(typeof question.answer === 'string' && question.answer.trim() === '') && !(Array.isArray(question.answer) && question.answer.length === 0)
+    if (!answered) stats.unanswered += 1
+    else if (question.is_correct === true) stats.correct += 1
+    else stats.incorrect += 1
+    return stats
+  }, { correct: 0, incorrect: 0, unanswered: 0 })
+}
+
+function buildSectionRows(questions) {
+  const grouped = questions.reduce((result, question) => {
+    const name = question.section?.name || question.section || 'Tanpa section'
+    if (!result[name]) result[name] = { name, score: 0, maximum: 0 }
+    result[name].score += Number(question.score || 0)
+    result[name].maximum += Number(question.maximum_score || 0)
+    return result
+  }, {})
+  return Object.values(grouped).map((section) => ({ ...section, display_score: section.maximum ? `${section.score} / ${section.maximum}` : section.score }))
 }
 
 function ChoiceDiscussion({ question }) {

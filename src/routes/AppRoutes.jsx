@@ -21,6 +21,7 @@ import ProfilePage from '../pages/ProfilePage'
 import TokenPage from '../pages/TokenPage'
 import ExamAttemptPage from '../pages/ExamAttemptPage'
 import QuestionDiscussionPage from '../pages/QuestionDiscussionPage'
+import ResultDetailPage from '../pages/ResultDetailPage'
 import { attemptService } from '../services/attemptService'
 
 function Logo() {
@@ -37,6 +38,7 @@ export default function AppRoutes() {
       <Route path="/exams/:examId/token" element={<RouteEntry routeKind="exam-token" />} />
       <Route path="/exams/:examId/attempt" element={<RouteEntry routeKind="exam" />} />
       <Route path="/results" element={<RouteEntry routeKind="results" />} />
+      <Route path="/results/detail" element={<RouteEntry routeKind="result-detail" />} />
       <Route path="/results/discussion" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/results/discussion/:questionId" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/profile" element={<RouteEntry routeKind="profile" />} />
@@ -227,7 +229,7 @@ function AppContent({ routeKind, examId, questionId }) {
   }, [examId, authenticated])
 
   useEffect(() => {
-    if (routeKind !== 'results' || !attemptId || !authenticated) return undefined
+    if (!['results', 'result-detail'].includes(routeKind) || !attemptId || !authenticated) return undefined
     let cancelled = false
     attemptService.result(attemptId)
       .then((result) => { if (!cancelled) setExamResult(result) })
@@ -236,7 +238,7 @@ function AppContent({ routeKind, examId, questionId }) {
   }, [routeKind, attemptId, authenticated])
 
   useEffect(() => {
-    if (routeKind !== 'discussion' || !authenticated) return undefined
+    if (!['discussion', 'result-detail'].includes(routeKind) || !authenticated) return undefined
     let cancelled = false
     let discussionAttemptId = attemptId
     if (!discussionAttemptId) {
@@ -247,8 +249,11 @@ function AppContent({ routeKind, examId, questionId }) {
       }
     }
     if (!discussionAttemptId) return undefined
-    attemptService.discussion(discussionAttemptId)
-      .then((data) => { if (!cancelled) setDiscussion(data) })
+    Promise.all([attemptService.discussion(discussionAttemptId), attemptService.result(discussionAttemptId)])
+      .then(([data, result]) => {
+        if (cancelled) return
+        setDiscussion({ ...data, result })
+      })
       .catch((error) => { if (!cancelled) setDataError(getErrorMessage(error)) })
     return () => { cancelled = true }
   }, [routeKind, attemptId, authenticated])
@@ -304,6 +309,26 @@ function AppContent({ routeKind, examId, questionId }) {
       setDataError(getErrorMessage(error))
     }
   }, [exams, navigate, selectedExam])
+
+  const openResultDetail = useCallback((exam) => {
+    try {
+      const storedAttempt = localStorage.getItem(`cbt_completed_attempt_${exam.id}`)
+      const cachedAttempt = storedAttempt ? JSON.parse(storedAttempt) : null
+      const matchingAttempt = String(selectedExam?.id) === String(exam.id)
+        ? selectedExam.attempt || selectedExam.attempt_id
+        : exam.attempt || exam.attempt_id || cachedAttempt
+      if (!matchingAttempt?.id && !matchingAttempt) {
+        setDataError('Attempt hasil ujian tidak ditemukan.')
+        return
+      }
+      setSelectedExam({ ...exam, attempt: matchingAttempt.id ? matchingAttempt : { id: matchingAttempt } })
+      setExamResult(null)
+      setDiscussion(null)
+      navigate('/results/detail')
+    } catch (error) {
+      setDataError(getErrorMessage(error))
+    }
+  }, [navigate, selectedExam])
 
   const openTokenPage = useCallback(() => {
     setExamToken('')
@@ -491,11 +516,17 @@ function AppContent({ routeKind, examId, questionId }) {
       question={questions[currentIndex]}
       index={currentIndex}
       total={questions.length}
+      questions={questions}
+      sections={discussion?.result?.sections || []}
       onBack={() => navigate('/exams')}
       onPrevious={() => navigate(`/results/discussion/${questions[currentIndex - 1]?.id}`)}
       onNext={() => currentIndex === questions.length - 1 ? navigate('/exams') : navigate(`/results/discussion/${questions[currentIndex + 1]?.id}`)}
       isLast={currentIndex === questions.length - 1}
     />
+  }
+
+  if (page === 'result-detail') {
+    return <ResultDetailPage result={examResult} discussion={discussion} onBack={() => navigate('/results')} />
   }
 
   if (page === 'exam-token') {
@@ -538,9 +569,9 @@ function AppContent({ routeKind, examId, questionId }) {
         {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
         <div className="content-wrap">
           {page === 'dashboard' && <DashboardPage onExam={openExam} onPage={(target) => navigate(target === 'exams' ? '/exams' : '/results')} exams={exams} completed={completed} student={student} dashboard={dashboard} />}
-          {page === 'exams' && <ExamListPage exams={exams} onExam={openExam} onExplanation={openExplanation} />}
+          {page === 'exams' && <ExamListPage exams={exams} onExam={openExam} onExplanation={openExplanation} onDetail={openResultDetail} />}
           {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : () => startExam('start')} />}
-          {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} />}
+          {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} onDetail={() => navigate('/results/detail')} />}
           {page === 'profile' && <ProfilePage student={student} />}
         </div>
       </main>
