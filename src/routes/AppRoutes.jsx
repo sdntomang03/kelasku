@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { apiRequest } from '../api/client'
 import Icon from '../components/common/Icon'
 import IntegrityModal from '../components/common/IntegrityModal'
@@ -24,6 +25,9 @@ import QuestionDiscussionPage from '../pages/QuestionDiscussionPage'
 import ResultDetailPage from '../pages/ResultDetailPage'
 import { attemptService } from '../services/attemptService'
 
+const PracticePage = lazy(() => import('../pages/PracticePage'))
+const LearnPage = lazy(() => import('../pages/LearnPage'))
+
 function Logo() {
   return <div className="brand"><span className="brand-mark">C</span><span>kelas<span className="brand-accent">ku</span></span></div>
 }
@@ -42,17 +46,24 @@ export default function AppRoutes() {
       <Route path="/results/discussion" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/results/discussion/:questionId" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/profile" element={<RouteEntry routeKind="profile" />} />
+      <Route path="/learn" element={<RouteEntry routeKind="learn" />} />
+      <Route path="/learn/:categoryId" element={<RouteEntry routeKind="learn-category" />} />
+      <Route path="/learn/:categoryId/:materialId" element={<RouteEntry routeKind="learn-detail" />} />
+      <Route path="/practice" element={<RouteEntry routeKind="practice" />} />
+      <Route path="/practice/:categoryId" element={<RouteEntry routeKind="practice-category" />} />
+      <Route path="/practice/:categoryId/:packageId/attempt" element={<RouteEntry routeKind="practice-attempt" />} />
+      <Route path="/practice/:categoryId/:packageId/result" element={<RouteEntry routeKind="practice-result" />} />
       <Route path="*" element={<RouteEntry routeKind="dashboard" />} />
     </Routes>
   )
 }
 
 function RouteEntry({ routeKind }) {
-  const { examId, questionId } = useParams()
-  return <AppContent routeKind={routeKind} examId={examId} questionId={questionId} />
+  const { examId, questionId, categoryId, packageId, materialId } = useParams()
+  return <AppContent routeKind={routeKind} examId={examId} questionId={questionId} categoryId={categoryId} packageId={packageId} materialId={materialId} />
 }
 
-function AppContent({ routeKind, examId, questionId }) {
+function AppContent({ routeKind, examId, questionId, categoryId, packageId, materialId }) {
   const navigate = useNavigate()
 
   const [authenticated, setAuthenticated] = useState(() => Boolean(localStorage.getItem('cbt_token')))
@@ -542,6 +553,9 @@ function AppContent({ routeKind, examId, questionId }) {
   if (!student) return <div className="loading-screen"><Logo /><p>{dataError || 'Data akun tidak dapat dimuat.'}</p><button className="primary-button" onClick={() => { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}>Kembali ke login</button></div>
 
   const page = routeKind
+  const isAndroid = Capacitor.getPlatform() === 'android'
+  const isAndroidLearningPage = page.startsWith('learn') || page.startsWith('practice')
+  const practiceMode = routeKind === 'practice-attempt' ? 'attempt' : routeKind === 'practice-result' ? 'result' : undefined
 
   if (page === 'exam') {
     return (
@@ -620,21 +634,26 @@ function AppContent({ routeKind, examId, questionId }) {
           <NavItem icon="grid" label="Ringkasan" active={page === 'dashboard'} onClick={() => { setMobileMenuOpen(false); navigate('/dashboard') }} />
           <NavItem icon="clipboard" label="Ujian saya" active={page === 'exams' || page === 'exam-detail'} badge={exams.length} onClick={() => { setMobileMenuOpen(false); navigate('/exams') }} />
           <NavItem icon="chart" label="Hasil ujian" active={page === 'results'} onClick={() => { setMobileMenuOpen(false); navigate('/results') }} />
+          {isAndroid && <NavItem icon="book" label="Belajar" active={page.startsWith('learn')} onClick={() => { setMobileMenuOpen(false); navigate('/learn') }} />}
+          {isAndroid && <NavItem icon="clipboard" label="Latihan" active={page.startsWith('practice')} onClick={() => { setMobileMenuOpen(false); navigate('/practice') }} />}
           <span className="nav-label nav-label-spaced">AKUN</span>
           <NavItem icon="user" label="Profil saya" active={page === 'profile'} onClick={() => { setMobileMenuOpen(false); navigate('/profile') }} />
         </nav>
         <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span><button>Hubungi kami <Icon name="arrow" size={14} /></button></div><button className="logout-button" onClick={async () => { try { await apiRequest('/logout', { method: 'POST', body: {} }) } finally { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') } }}><Icon name="logout" /> Keluar</button></div>
       </aside>
       <main className="main-content">
-        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
+        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page.startsWith('practice') ? 'Latihan' : page.startsWith('learn') ? 'Belajar' : page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
         {dataError && <div className="api-error">{dataError}</div>}
         {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
         <div className="content-wrap">
+          {isAndroidLearningPage && !isAndroid && <div className="platform-notice" role="status"><span><Icon name="book" size={23} /></span><h1>Fitur tersedia di Android</h1><p>Menu Belajar dan Latihan menggunakan database lokal dan hanya tersedia melalui aplikasi Android.</p><button className="secondary-button" onClick={() => navigate('/dashboard')}>Kembali ke ringkasan</button></div>}
           {page === 'dashboard' && <DashboardPage onExam={openExam} onPage={(target) => navigate(target === 'exams' ? '/exams' : '/results')} exams={exams} completed={completed} student={student} dashboard={dashboard} />}
           {page === 'exams' && <ExamListPage exams={exams} onExam={openExam} onExplanation={openExplanation} onDetail={openResultDetail} />}
           {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : () => startExam('start')} />}
           {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} onDetail={() => navigate('/results/detail')} />}
           {page === 'profile' && <ProfilePage student={student} />}
+          {isAndroid && page.startsWith('learn') && <Suspense fallback={<div className="practice-state">Memuat materi belajar...</div>}><LearnPage categoryId={categoryId} materialId={materialId} navigate={navigate} /></Suspense>}
+          {isAndroid && page.startsWith('practice') && <Suspense fallback={<div className="practice-state">Memuat menu latihan...</div>}><PracticePage categoryId={categoryId} packageId={packageId} mode={practiceMode} navigate={navigate} /></Suspense>}
         </div>
         <footer className="app-footer">Copyright @2026</footer>
       </main>
