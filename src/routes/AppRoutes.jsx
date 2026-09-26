@@ -554,6 +554,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
 
   const page = routeKind
   const isAndroid = Capacitor.getPlatform() === 'android'
+  const isLocalPracticeWebEnabled = import.meta.env.VITE_ENABLE_LOCAL_PRACTICE_WEB === 'true'
+  const canUseLocalPractice = isAndroid || isLocalPracticeWebEnabled
   const isAndroidLearningPage = page.startsWith('learn') || page.startsWith('practice')
   const practiceMode = routeKind === 'practice-attempt' ? 'attempt' : routeKind === 'practice-result' ? 'result' : undefined
 
@@ -634,8 +636,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           <NavItem icon="grid" label="Ringkasan" active={page === 'dashboard'} onClick={() => { setMobileMenuOpen(false); navigate('/dashboard') }} />
           <NavItem icon="clipboard" label="Ujian saya" active={page === 'exams' || page === 'exam-detail'} badge={exams.length} onClick={() => { setMobileMenuOpen(false); navigate('/exams') }} />
           <NavItem icon="chart" label="Hasil ujian" active={page === 'results'} onClick={() => { setMobileMenuOpen(false); navigate('/results') }} />
-          {isAndroid && <NavItem icon="book" label="Belajar" active={page.startsWith('learn')} onClick={() => { setMobileMenuOpen(false); navigate('/learn') }} />}
-          {isAndroid && <NavItem icon="clipboard" label="Latihan" active={page.startsWith('practice')} onClick={() => { setMobileMenuOpen(false); navigate('/practice') }} />}
+          {canUseLocalPractice && <NavItem icon="book" label="Belajar" active={page.startsWith('learn')} onClick={() => { setMobileMenuOpen(false); navigate('/learn') }} />}
+          {canUseLocalPractice && <NavItem icon="clipboard" label="Latihan" active={page.startsWith('practice')} onClick={() => { setMobileMenuOpen(false); navigate('/practice') }} />}
           <span className="nav-label nav-label-spaced">AKUN</span>
           <NavItem icon="user" label="Profil saya" active={page === 'profile'} onClick={() => { setMobileMenuOpen(false); navigate('/profile') }} />
         </nav>
@@ -646,14 +648,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         {dataError && <div className="api-error">{dataError}</div>}
         {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
         <div className="content-wrap">
-          {isAndroidLearningPage && !isAndroid && <div className="platform-notice" role="status"><span><Icon name="book" size={23} /></span><h1>Fitur tersedia di Android</h1><p>Menu Belajar dan Latihan menggunakan database lokal dan hanya tersedia melalui aplikasi Android.</p><button className="secondary-button" onClick={() => navigate('/dashboard')}>Kembali ke ringkasan</button></div>}
+          {isAndroidLearningPage && !canUseLocalPractice && <div className="platform-notice" role="status"><span><Icon name="book" size={23} /></span><h1>Fitur tersedia di Android</h1><p>Menu Belajar dan Latihan menggunakan database lokal dan saat ini hanya tersedia melalui aplikasi Android.</p><button className="secondary-button" onClick={() => navigate('/dashboard')}>Kembali ke ringkasan</button></div>}
           {page === 'dashboard' && <DashboardPage onExam={openExam} onPage={(target) => navigate(target === 'exams' ? '/exams' : '/results')} exams={exams} completed={completed} student={student} dashboard={dashboard} />}
           {page === 'exams' && <ExamListPage exams={exams} onExam={openExam} onExplanation={openExplanation} onDetail={openResultDetail} />}
           {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : () => startExam('start')} />}
           {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} onDetail={() => navigate('/results/detail')} />}
           {page === 'profile' && <ProfilePage student={student} />}
-          {isAndroid && page.startsWith('learn') && <Suspense fallback={<div className="practice-state">Memuat materi belajar...</div>}><LearnPage categoryId={categoryId} materialId={materialId} navigate={navigate} /></Suspense>}
-          {isAndroid && page.startsWith('practice') && <Suspense fallback={<div className="practice-state">Memuat menu latihan...</div>}><PracticePage categoryId={categoryId} packageId={packageId} mode={practiceMode} navigate={navigate} /></Suspense>}
+          {canUseLocalPractice && page.startsWith('learn') && <Suspense fallback={<div className="practice-state">Memuat materi belajar...</div>}><LearnPage categoryId={categoryId} materialId={materialId} navigate={navigate} /></Suspense>}
+          {canUseLocalPractice && page.startsWith('practice') && <Suspense fallback={<div className="practice-state">Memuat menu latihan...</div>}><PracticePage categoryId={categoryId} packageId={packageId} mode={practiceMode} navigate={navigate} /></Suspense>}
         </div>
         <footer className="app-footer">Copyright @2026</footer>
       </main>

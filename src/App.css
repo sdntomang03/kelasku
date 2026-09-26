@@ -185,7 +185,10 @@
 .result-surface-card .section-heading{margin-bottom:16px}
 .result-surface-card .section-heading h2{font-size:15px}
 .results-table .result-row{padding:16px 0}
-.result-back-button{margin-bottom:18px}
+.result-back-button{display:flex;width:fit-content;align-items:center;gap:9px;margin:0 0 32px;padding:10px 15px;border:1px solid #e5e7f0;border-radius:10px;background:#fff;color:#596176;font-size:11px;font-weight:700;box-shadow:0 3px 10px rgba(25,33,58,.04);transition:background .18s,border-color .18s,color .18s,box-shadow .18s,transform .18s}
+.result-back-button:hover{transform:translateY(-1px);border-color:#c9c2ff;background:#f8f7ff;color:var(--purple);box-shadow:0 6px 16px rgba(81,64,191,.09)}
+.result-back-button:focus-visible{outline:3px solid rgba(105,86,216,.25);outline-offset:2px}
+.result-back-button svg{flex:none}
 .result-detail-hero{border-radius:14px;background:linear-gradient(125deg,#6956d8,#5745c5);border-color:#5d4bc7;box-shadow:0 14px 32px rgba(81,64,191,.14)}
 .result-detail-hero .eyebrow{color:#dcd8ff}
 .result-detail-hero h1,.result-detail-hero .muted{color:#fff}

@@ -13,7 +13,7 @@ export default function ResultsPage({ exams, result, discussion, allowExplanatio
 }
 
 function ResultRow({ exam }) {
-  return <div className="result-row"><div className={`subject-icon ${exam.color}`}><Icon name="chart" size={20} /></div><div className="row-main"><strong>{exam.title}</strong><span>{exam.end_time} <i /> {exam.total_questions} soal</span></div><div className="score"><strong>{exam.final_score}</strong><span>/ 100</span></div><span className="score-label">Sangat baik</span></div>
+  return <div className="result-row"><div className={`subject-icon ${exam.color}`}><Icon name="chart" size={20} /></div><div className="row-main"><strong>{exam.title}</strong><span>{exam.end_time} <i /> {exam.total_questions} soal</span></div><div className="score"><strong>{exam.final_score}</strong><span>/ 100</span></div></div>
 }
 
 function ExplanationSection({ items, onQuestionDiscussion }) {

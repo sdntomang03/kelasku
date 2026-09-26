@@ -8,7 +8,7 @@ export default function ResultDetailPage({ detail, loading, error, onBack, onDis
   const sections = detail?.detail_nilai || []
 
   return <div className="page-enter result-detail-page exam-result-shell">
-    <button className="back-button result-back-button" onClick={onBack}><Icon name="arrow" size={15} /> Kembali ke hasil ujian</button>
+    <button className="back-button result-back-button" onClick={onBack}><Icon name="arrowLeft" size={17} /> <span>Kembali ke hasil ujian</span></button>
     {loading && <div className="result-detail-state"><div className="loading-spinner" /><strong>Memuat detail nilai...</strong></div>}
     {!loading && error && <div className="result-detail-state error"><strong>{error}</strong><button className="primary-button small" onClick={onBack}>Kembali ke hasil ujian</button></div>}
     {!loading && !error && detail && <><ExamScoreSummary detail={detail} /><section className="section-card result-detail-sections result-surface-card"><div className="section-heading"><div><h2>Detail nilai per section</h2><p className="muted">Rincian nilai yang dikirim oleh server untuk setiap section.</p></div></div>{sections.length ? <div className="section-score-list">{sections.map((section, index) => <SectionScoreCard key={section.id || section.section_name || index} section={section} />)}</div> : <div className="result-detail-empty">Detail nilai section belum tersedia.</div>}</section>{detail.exam?.show_explanation === true && detail.status === 'completed' && <button type="button" className="result-detail-discussion-button" onClick={() => onDiscussion({ ...detail.exam, status: detail.status, attempt_id: detail.attempt_id, attempt: { id: detail.attempt_id } })}><Icon name="book" size={15} /> Lihat pembahasan</button>}</>}

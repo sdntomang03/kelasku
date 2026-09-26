@@ -5,6 +5,7 @@ const iconPaths = {
   user: 'M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
   arrow: 'M5 12h14m-6-6 6 6-6 6',
+  arrowLeft: 'M19 12H5m7 7-7-7 7-7',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-14v5l3 2',
   logout: 'M10 17l5-5-5-5m5 5H3m11-9h3a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-3',
   chevronDown: 'm6 9 6 6 6-6',
