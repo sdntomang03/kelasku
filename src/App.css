@@ -233,6 +233,7 @@
 
 /* Modern exam workspace */
 .exam-screen{--exam-ink:#172033;--exam-muted:#64748b;--exam-line:#e2e8f0;--exam-surface:#fff;--exam-brand:#4f46e5;--exam-brand-soft:#eef2ff;min-height:100vh;background:#f4f7fb;color:var(--exam-ink)}
+.exam-screen{-webkit-user-select:none;user-select:none}
 .exam-topbar{position:sticky;top:0;z-index:30;height:76px;padding:0 clamp(16px,4vw,52px);gap:18px;background:rgba(255,255,255,.94);border-bottom:1px solid rgba(226,232,240,.9);box-shadow:0 4px 18px rgba(15,23,42,.05);backdrop-filter:blur(14px)}
 .exam-topbar .brand{flex:0 0 auto;color:var(--exam-ink)}
 .exam-title{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;padding-left:18px;border-left:1px solid var(--exam-line)}

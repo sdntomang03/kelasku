@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import MathContent from "../content/MathContent"
 
 export default function QuestionAnswer({ type, question, value, onChange }) {
   if (["single_choice", "tkp"].includes(type)) return <SingleChoiceAnswer options={question.options || []} value={value} onChange={onChange} />
@@ -10,15 +11,15 @@ export default function QuestionAnswer({ type, question, value, onChange }) {
 }
 
 function SingleChoiceAnswer({ options = [], value, onChange }) {
-  return <div className="answer-options">{options.map((option, index) => { const selected = String(value) === String(option.id); return <button key={option.id} className={selected ? "selected" : ""} onClick={() => onChange(option.id)}><span className="choice-letter">{String.fromCharCode(65 + index)}</span><span dangerouslySetInnerHTML={{ __html: option.option_text || option.text || option.label || "" }} />{selected && <b>{String.fromCharCode(10003)}</b>}</button> })}</div>
+  return <div className="answer-options">{options.map((option, index) => { const selected = String(value) === String(option.id); return <button key={option.id} className={selected ? "selected" : ""} onClick={() => onChange(option.id)}><span className="choice-letter">{String.fromCharCode(65 + index)}</span><MathContent html={option.option_text || option.text || option.label || ""} />{selected && <b>{String.fromCharCode(10003)}</b>}</button> })}</div>
 }
 
 function MultipleChoiceAnswer({ options = [], value = [], onChange }) {
-  return <div className="answer-options">{options.map((option) => { const selected = Array.isArray(value) && value.some((id) => String(id) === String(option.id)); return <button key={option.id} className={selected ? "selected" : ""} onClick={() => onChange(selected ? value.filter((id) => String(id) !== String(option.id)) : [...(Array.isArray(value) ? value : []), option.id])}><span className="choice-check">{selected ? String.fromCharCode(10003) : ""}</span><span dangerouslySetInnerHTML={{ __html: option.option_text || option.text || option.label || "" }} /></button> })}</div>
+  return <div className="answer-options">{options.map((option) => { const selected = Array.isArray(value) && value.some((id) => String(id) === String(option.id)); return <button key={option.id} className={selected ? "selected" : ""} onClick={() => onChange(selected ? value.filter((id) => String(id) !== String(option.id)) : [...(Array.isArray(value) ? value : []), option.id])}><span className="choice-check">{selected ? String.fromCharCode(10003) : ""}</span><MathContent html={option.option_text || option.text || option.label || ""} /></button> })}</div>
 }
 
 function TrueFalseAnswer({ options = [], value, onChange }) {
-  return <div className="true-false-table"><div className="tf-head"><span>Pernyataan</span><b>Benar</b><b>Salah</b></div>{options.map((option) => <div className="tf-row" key={option.id}><span dangerouslySetInnerHTML={{ __html: option.option_text || option.text || option.label || "" }} /><label><input type="radio" name={"tf-" + option.id} checked={value?.[option.id] === "benar"} onChange={() => onChange({ ...(value || {}), [option.id]: "benar" })} /></label><label><input type="radio" name={"tf-" + option.id} checked={value?.[option.id] === "salah"} onChange={() => onChange({ ...(value || {}), [option.id]: "salah" })} /></label></div>)}</div>
+  return <div className="true-false-table"><div className="tf-head"><span>Pernyataan</span><b>Benar</b><b>Salah</b></div>{options.map((option) => <div className="tf-row" key={option.id}><MathContent html={option.option_text || option.text || option.label || ""} /><label><input type="radio" name={"tf-" + option.id} checked={value?.[option.id] === "benar"} onChange={() => onChange({ ...(value || {}), [option.id]: "benar" })} /></label><label><input type="radio" name={"tf-" + option.id} checked={value?.[option.id] === "salah"} onChange={() => onChange({ ...(value || {}), [option.id]: "salah" })} /></label></div>)}</div>
 }
 
 function EssayAnswer({ value, onChange }) {
@@ -74,5 +75,5 @@ function MatchingAnswer({ question, value, onChange }) {
     setActivePremise(null)
   }
 
-  return <div className="matching-answer line-matching" ref={containerRef}><svg className="matching-lines" aria-hidden="true">{lines.map((line, index) => <line key={index} {...line} />)}</svg><div className="matching-column"><span className="matching-heading">Pernyataan</span>{matches.map((item) => <button className={"match-item " + (activePremise === item.id ? "active" : "") + " " + (current[item.id] ? "connected" : "")} ref={(node) => { premiseRefs.current[item.id] = node }} key={item.id} onClick={() => setActivePremise(item.id)}><span dangerouslySetInnerHTML={{ __html: item.premise_text }} /><i>{current[item.id] ? "Terhubung" : "Pilih"}</i></button>)}</div><div className="matching-column"><span className="matching-heading">Pilihan pasangan</span>{targets.map((target) => <button className={"target-item " + (Object.values(current).some((id) => String(id) === String(target.id)) ? "connected" : "")} ref={(node) => { targetRefs.current[target.id] = node }} key={target.id} onClick={() => connect(target.id)} dangerouslySetInnerHTML={{ __html: target.text }} />)}</div></div>
+  return <div className="matching-answer line-matching" ref={containerRef}><svg className="matching-lines" aria-hidden="true">{lines.map((line, index) => <line key={index} {...line} />)}</svg><div className="matching-column"><span className="matching-heading">Pernyataan</span>{matches.map((item) => <button className={"match-item " + (activePremise === item.id ? "active" : "") + " " + (current[item.id] ? "connected" : "")} ref={(node) => { premiseRefs.current[item.id] = node }} key={item.id} onClick={() => setActivePremise(item.id)}><MathContent html={item.premise_text} /><i>{current[item.id] ? "Terhubung" : "Pilih"}</i></button>)}</div><div className="matching-column"><span className="matching-heading">Pilihan pasangan</span>{targets.map((target) => <button className={"target-item " + (Object.values(current).some((id) => String(id) === String(target.id)) ? "connected" : "")} ref={(node) => { targetRefs.current[target.id] = node }} key={target.id} onClick={() => connect(target.id)}><MathContent html={target.text} /></button>)}</div></div>
 }

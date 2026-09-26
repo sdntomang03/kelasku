@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Icon from '../components/common/Icon'
 import ImageRichContent from '../components/content/ImageRichContent'
+import MathContent from '../components/content/MathContent'
 
 export default function QuestionDiscussionPage({ question, index, total, questions = [], sections = [], onBack, onPrevious, onNext, isLast }) {
   if (!question) return <div className="empty-state">Pembahasan soal tidak ditemukan.</div>
@@ -60,7 +61,7 @@ function ChoiceDiscussion({ question }) {
   return <div className="explanation-options">{question.options.map((option) => {
     const selected = answers.includes(String(option.id))
     return <div className={`${selected ? 'selected' : ''} ${option.is_correct ? 'correct' : ''}`} key={option.id}>
-      <span dangerouslySetInnerHTML={{ __html: option.option_text || '' }} />
+      <MathContent html={option.option_text || ''} />
       {selected && <b>Jawaban siswa</b>}
       {option.is_correct && <b>Kunci jawaban</b>}
     </div>
@@ -72,7 +73,7 @@ function TkpDiscussion({ question }) {
   return <div className="explanation-options">{question.options.map((option) => {
     const selected = answers.includes(String(option.id))
     return <div className={selected ? 'selected' : ''} key={option.id}>
-      <span dangerouslySetInnerHTML={{ __html: option.option_text || '' }} />
+      <MathContent html={option.option_text || ''} />
       <b className="tkp-score-weight">Bobot {option.score_weight ?? '—'}</b>
       {selected && <b>Jawaban siswa</b>}
     </div>
@@ -85,7 +86,7 @@ function TrueFalseDiscussion({ question }) {
     const correct = option.is_correct ? 'benar' : 'salah'
     const student = String(answer[option.id] || '').toLowerCase() || '—'
     const correctMatch = student === correct
-    return <tr key={option.id}><td dangerouslySetInnerHTML={{ __html: option.option_text || '' }} /><td>{correct}</td><td>{student}</td><td><span className={correctMatch ? 'discussion-status correct' : 'discussion-status incorrect'}>{correctMatch ? 'Benar' : 'Salah'}</span></td></tr>
+    return <tr key={option.id}><td><MathContent html={option.option_text || ''} /></td><td>{correct}</td><td>{student}</td><td><span className={correctMatch ? 'discussion-status correct' : 'discussion-status incorrect'}>{correctMatch ? 'Benar' : 'Salah'}</span></td></tr>
   })}</tbody></table></div>
 }
 
@@ -129,14 +130,14 @@ function MatchingDiscussion({ question }) {
   return <div>
     <div className="matching-answer line-matching discussion-matching" ref={containerRef}>
     <svg className="matching-lines" aria-hidden="true">{lines.map((line, index) => <line key={index} {...line} />)}</svg>
-    <div className="matching-column"><span className="matching-heading">Pernyataan</span>{matches.map((item) => <div className="match-item connected" ref={(node) => { premiseRefs.current[item.id] = node }} key={item.id}><span dangerouslySetInnerHTML={{ __html: item.premise_text || item.text || '' }} /><i>Terhubung</i></div>)}</div>
-    <div className="matching-column"><span className="matching-heading">Pilihan pasangan</span>{targets.map((target) => <div className="target-item connected" ref={(node) => { targetRefs.current[target.id] = node }} key={target.id} dangerouslySetInnerHTML={{ __html: target.text || target.target_text || '' }} />)}</div>
+    <div className="matching-column"><span className="matching-heading">Pernyataan</span>{matches.map((item) => <div className="match-item connected" ref={(node) => { premiseRefs.current[item.id] = node }} key={item.id}><MathContent html={item.premise_text || item.text || ''} /><i>Terhubung</i></div>)}</div>
+    <div className="matching-column"><span className="matching-heading">Pilihan pasangan</span>{targets.map((target) => <div className="target-item connected" ref={(node) => { targetRefs.current[target.id] = node }} key={target.id}><MathContent html={target.text || target.target_text || ''} /></div>)}</div>
     </div>
     <div className="matching-result-table"><div className="matching-result-heading"><span>Pernyataan</span><span>Jawaban siswa</span><span>Kunci jawaban</span></div>{matches.map((item) => {
       const studentTarget = answer[item.id]
       const expectedTarget = correctTarget(item)
       const isCorrect = String(studentTarget) === String(expectedTarget)
-      return <div className="matching-result-row" key={item.id}><span dangerouslySetInnerHTML={{ __html: item.premise_text || item.text || '' }} /><span dangerouslySetInnerHTML={{ __html: targetText(studentTarget) }} /><span dangerouslySetInnerHTML={{ __html: targetText(expectedTarget) }} /><b className={isCorrect ? 'correct' : 'incorrect'}>{isCorrect ? 'Benar' : 'Salah'}</b></div>
+      return <div className="matching-result-row" key={item.id}><MathContent html={item.premise_text || item.text || ''} /><MathContent html={targetText(studentTarget)} /><MathContent html={targetText(expectedTarget)} /><b className={isCorrect ? 'correct' : 'incorrect'}>{isCorrect ? 'Benar' : 'Salah'}</b></div>
     })}</div>
   </div>
 }

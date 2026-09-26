@@ -50,6 +50,17 @@ export default function ExamScreen({ exam, question, questionLoading = false, qu
     }
   }, [enableViolation, violationState.locked, violationBusy, onViolation, requestExamFullscreen])
 
+  useEffect(() => {
+    const preventContextMenu = (event) => event.preventDefault()
+    const preventSelection = (event) => event.preventDefault()
+    document.addEventListener("contextmenu", preventContextMenu)
+    document.addEventListener("selectstart", preventSelection)
+    return () => {
+      document.removeEventListener("contextmenu", preventContextMenu)
+      document.removeEventListener("selectstart", preventSelection)
+    }
+  }, [])
+
   if (violationState.locked) return <ViolationLockedScreen count={violationState.count} onExit={onExit} />
   if (!question) return <div className="loading-screen"><Logo /><p>{questionError || "Memuat soal..."}</p><button className="secondary-button" onClick={onExit}>Keluar dari ujian</button></div>
 
