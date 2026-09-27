@@ -42,7 +42,7 @@ async function openDatabase() {
       : await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false)
     const isOpen = await db.isDBOpen()
     if (!isOpen.result) await db.open()
-    await db.execute(schema.join(';'))
+    for (const statement of schema) await db.execute(statement)
     if (Capacitor.getPlatform() === 'web') await sqlite.saveToStore(DATABASE_NAME)
     return db
   })().catch((error) => {
@@ -251,8 +251,6 @@ async function importPracticeDatabaseBytes(bytes) {
       ['learning_materials', ['id', 'category_id', 'title', 'summary', 'content', 'sort_order'], learningMaterials, (row) => [row.id, value(row, 'category_id'), row.title, value(row, 'summary', ''), row.content, value(row, 'sort_order', 0)]],
     ]
     const statements = [
-      { statement: 'DELETE FROM practice_answers', values: [] },
-      { statement: 'DELETE FROM practice_package_settings', values: [] },
       ...['learning_materials', 'options', 'matches', 'targets', 'questions', 'packages', 'categories'].map((table) => ({ statement: `DELETE FROM ${table}`, values: [] })),
     ]
     for (const [table, columns, rows, mapRow] of inserts) {
