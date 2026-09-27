@@ -1,4 +1,4 @@
-package com.tyoutseleksi.cpns;
+package com.ujianpro.kelasku;
 
 import com.getcapacitor.BridgeActivity;
 

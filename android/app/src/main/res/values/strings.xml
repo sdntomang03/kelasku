@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Tryout Seleksi CPNS</string>
-    <string name="title_activity_main">Tryout Seleksi CPNS</string>
-    <string name="package_name">com.tyoutseleksi.cpns</string>
-    <string name="custom_url_scheme">com.tyoutseleksi.cpns</string>
+    <string name="app_name">Kelasku: Belajar &amp; Latihan TKA SD</string>
+    <string name="title_activity_main">Kelasku: Belajar &amp; Latihan TKA SD</string>
+    <string name="package_name">com.ujianpro.kelasku</string>
+    <string name="custom_url_scheme">com.ujianpro.kelasku</string>
 </resources>

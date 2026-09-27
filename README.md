@@ -40,6 +40,7 @@ Minimum Android yang ditargetkan proyek ini adalah API 24 (Android 7.0). Untuk b
    ```env
    VITE_API_URL=https://alamat-server-anda/api/v1/student
    VITE_ENABLE_LOCAL_PRACTICE_WEB=false
+   VITE_WHATSAPP_NUMBER=628xxxxxxxxxx
    ```
 
    `VITE_API_URL` adalah URL API siswa. `VITE_ENABLE_LOCAL_PRACTICE_WEB` mengatur ketersediaan menu Belajar dan Latihan di browser:
@@ -47,7 +48,7 @@ Minimum Android yang ditargetkan proyek ini adalah API 24 (Android 7.0). Untuk b
    - `true`: tampilkan menu di web dan Android.
    - `false` atau tidak diset: menu hanya tersedia di Android.
 
-   Variabel berawalan `VITE_` disertakan ke bundle web saat build; jangan menyimpan secret atau kredensial privat di sana. Setelah mengubah `.env`, mulai ulang Vite.
+   `VITE_WHATSAPP_NUMBER` adalah nomor bantuan WhatsApp dalam format internasional berupa angka saja, termasuk kode negara (misalnya awalan `62` untuk Indonesia, tanpa `+`, spasi, atau tanda hubung). Variabel berawalan `VITE_` disertakan ke bundle web saat build; jangan menyimpan secret atau kredensial privat di sana. Setelah mengubah `.env`, mulai ulang Vite.
 
 4. Jalankan server pengembangan:
 
@@ -91,6 +92,18 @@ Capacitor menggunakan hasil build Vite dalam folder `dist`. Setiap kali kode web
 npm run build
 npx cap sync android
 ```
+
+Identitas aplikasi Android ditentukan oleh `appId` dan `appName` di `capacitor.config.json`, `applicationId`/`namespace` di `android/app/build.gradle`, serta label di `android/app/src/main/res/values/strings.xml`. Jika mengubah package ID sebelum rilis pertama, selaraskan juga package `MainActivity` dan jalankan `npx cap sync android`. Setelah aplikasi terbit di Play Store, package ID harus dipertahankan untuk pembaruan.
+
+### Mengganti ikon aplikasi
+
+Di Android Studio pilih **File > New > Image Asset**, pilih **Launcher Icons (Adaptive and Legacy)**, pilih file ikon sumber persegi beresolusi tinggi, atur foreground/background dan safe zone, lalu selesaikan wizard. Periksa aset pada `android/app/src/main/res/mipmap-*` dan `mipmap-anydpi-v26`, lalu jalankan build Android kembali. Siapkan ikon listing Play Store terpisah berukuran 512 × 512 piksel.
+
+### Kebijakan privasi dan listing Play Store
+
+Halaman kebijakan privasi tersedia di `public/privacy-policy.html` dan akan disalin ke `dist/privacy-policy.html`. Deploy file itu di HTTPS, lalu masukkan URL publiknya ke Play Console dan tautkan pada listing aplikasi. Pastikan domain produksi dan email kontak pada kebijakan aktif sebelum mengirim aplikasi untuk ditinjau. Formulir pendaftaran aplikasi menautkan kebijakan ini dan mewajibkan siswa menyatakan telah membacanya; halaman profil menyediakan tautan kebijakan dan permintaan penghapusan akun melalui email.
+
+Play Store membatasi judul listing hingga 30 karakter. Nama aplikasi di perangkat saat ini **Kelasku: Belajar & Latihan TKA SD**; judul listing yang lebih pendek dapat menggunakan **Kelasku: Belajar TKA SD**, lalu sebutkan fitur latihan pada deskripsi singkat/panjang. Isi Data safety harus sesuai implementasi backend dan praktik penyimpanan aktual.
 
 ### Membuka dan menjalankan di Android Studio
 
@@ -139,6 +152,7 @@ Setelah mengganti database contoh atau gambar lokal, jalankan kembali `npm run b
    ```env
    VITE_API_URL=https://alamat-server-anda/api/v1/student
    VITE_ENABLE_LOCAL_PRACTICE_WEB=true
+   VITE_WHATSAPP_NUMBER=628xxxxxxxxxx
    ```
 
    Gunakan `true` agar Belajar dan Latihan tampil di web, atau `false` untuk membatasi keduanya ke Android.

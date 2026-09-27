@@ -1,10 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1/student'
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, validationErrors = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.validationErrors = validationErrors
   }
 }
 
@@ -22,7 +23,7 @@ export async function apiRequest(path, options = {}) {
   })
   const payload = await response.json()
   if (!response.ok || payload.success === false) {
-    throw new ApiError(payload.message || 'Request gagal', response.status)
+    throw new ApiError(payload.message || 'Request gagal', response.status, payload.errors || {})
   }
   return payload.data
 }

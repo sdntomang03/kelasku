@@ -8,6 +8,7 @@ import { authService } from '../services/authService'
 import { dashboardService } from '../services/dashboardService'
 import { examService } from '../services/examService'
 import { getErrorMessage } from '../utils/api'
+import { getSupportWhatsAppUrl } from '../utils/whatsapp'
 import { randomizeQuestion, shuffle } from '../utils/question'
 import { examRequiresToken, getClassName, getSchoolName, isExamCompleted, isExamLocked } from '../utils/exam'
 import { useExamAttempt } from '../hooks/useExamAttempt'
@@ -76,6 +77,13 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const [login, setLogin] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
   const [isLoginLoading, setIsLoginLoading] = useState(false)
+  const [unverifiedLoginAttempts, setUnverifiedLoginAttempts] = useState(0)
+  const [registerError, setRegisterError] = useState('')
+  const [registerFieldErrors, setRegisterFieldErrors] = useState({})
+  const [registeredEmail, setRegisteredEmail] = useState('')
+  const [isRegisterLoading, setIsRegisterLoading] = useState(false)
+  const [resendMessage, setResendMessage] = useState('')
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
   const [examToken, setExamToken] = useState('')
   const [tokenError, setTokenError] = useState('')
   const [isTokenLoading, setIsTokenLoading] = useState(false)
@@ -329,19 +337,69 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const handleLogin = useCallback(async (event) => {
     event.preventDefault()
     setLoginError('')
+    setResendMessage('')
     setIsLoginLoading(true)
     try {
       const data = await authService.login(login)
       localStorage.setItem('cbt_token', data.token)
+      setUnverifiedLoginAttempts(0)
       setStudent(data.student)
       setAuthenticated(true)
       navigate('/dashboard', { replace: true })
     } catch (error) {
       setLoginError(getErrorMessage(error))
+      if (error.status === 403) setUnverifiedLoginAttempts((attempts) => attempts + 1)
     } finally {
       setIsLoginLoading(false)
     }
   }, [login, navigate])
+
+  const handleLoginIdentityChange = useCallback(() => {
+    setUnverifiedLoginAttempts(0)
+    setLoginError('')
+    setResendMessage('')
+  }, [])
+
+  const handleRegister = useCallback(async (event, registration) => {
+    event.preventDefault()
+    setRegisterError('')
+    setRegisterFieldErrors({})
+    setRegisteredEmail('')
+    setResendMessage('')
+    setIsRegisterLoading(true)
+    const payload = {
+      name: registration.name.trim(),
+      email: registration.email.trim(),
+      password: registration.password,
+      password_confirmation: registration.password_confirmation,
+      ...(registration.username.trim() ? { username: registration.username.trim() } : {}),
+      ...(registration.sekolah.trim() ? { sekolah: registration.sekolah.trim() } : {}),
+    }
+    try {
+      const data = await authService.register(payload)
+      setRegisteredEmail(data?.email || payload.email)
+    } catch (error) {
+      setRegisterError(error.status === 422 ? 'Periksa kembali data pendaftaran yang ditandai.' : getErrorMessage(error))
+      setRegisterFieldErrors(error.validationErrors || {})
+    } finally {
+      setIsRegisterLoading(false)
+    }
+  }, [])
+
+  const handleResendVerification = useCallback(async (email = registeredEmail) => {
+    const targetEmail = email.trim()
+    if (!targetEmail || isResendingVerification) return
+    setIsResendingVerification(true)
+    setResendMessage('')
+    try {
+      await authService.resendVerification(targetEmail)
+      setResendMessage('Jika akun tersebut perlu diverifikasi, tautan aktivasi akan dikirim ke alamat email yang terdaftar.')
+    } catch (error) {
+      setResendMessage(getErrorMessage(error))
+    } finally {
+      setIsResendingVerification(false)
+    }
+  }, [registeredEmail, isResendingVerification])
 
   const openExam = useCallback((exam) => {
     setSelectedExam({ ...exam })
@@ -543,7 +601,23 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
 
   if (!authenticated) {
     if (routeKind === 'login') {
-      return <LoginPage login={login} setLogin={setLogin} onSubmit={handleLogin} error={loginError} loading={isLoginLoading} />
+      return <LoginPage
+        login={login}
+        setLogin={setLogin}
+        onSubmit={handleLogin}
+        error={loginError}
+        loading={isLoginLoading}
+        onLoginIdentityChange={handleLoginIdentityChange}
+        unverifiedLoginAttempts={unverifiedLoginAttempts}
+        onRegister={handleRegister}
+        registerError={registerError}
+        registerFieldErrors={registerFieldErrors}
+        registerLoading={isRegisterLoading}
+        registeredEmail={registeredEmail}
+        resendMessage={resendMessage}
+        onResendVerification={handleResendVerification}
+        resendLoading={isResendingVerification}
+      />
     }
     return <Navigate to="/login" replace />
   }
@@ -555,6 +629,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const page = routeKind
   const isAndroid = Capacitor.getPlatform() === 'android'
   const isLocalPracticeWebEnabled = import.meta.env.VITE_ENABLE_LOCAL_PRACTICE_WEB === 'true'
+  const supportWhatsAppUrl = getSupportWhatsAppUrl()
   const canUseLocalPractice = isAndroid || isLocalPracticeWebEnabled
   const isAndroidLearningPage = page.startsWith('learn') || page.startsWith('practice')
   const practiceMode = routeKind === 'practice-attempt' ? 'attempt' : routeKind === 'practice-result' ? 'result' : undefined
@@ -641,7 +716,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           <span className="nav-label nav-label-spaced">AKUN</span>
           <NavItem icon="user" label="Profil saya" active={page === 'profile'} onClick={() => { setMobileMenuOpen(false); navigate('/profile') }} />
         </nav>
-        <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span><button>Hubungi kami <Icon name="arrow" size={14} /></button></div><button className="logout-button" onClick={async () => { try { await apiRequest('/logout', { method: 'POST', body: {} }) } finally { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') } }}><Icon name="logout" /> Keluar</button></div>
+        <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span>{supportWhatsAppUrl ? <a href={supportWhatsAppUrl} target="_blank" rel="noopener noreferrer">Hubungi kami <Icon name="arrow" size={14} /></a> : <span className="help-contact-unavailable">Kontak WhatsApp belum tersedia</span>}</div><button className="logout-button" onClick={async () => { try { await apiRequest('/logout', { method: 'POST', body: {} }) } finally { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') } }}><Icon name="logout" /> Keluar</button></div>
       </aside>
       <main className="main-content">
         <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page.startsWith('practice') ? 'Latihan' : page.startsWith('learn') ? 'Belajar' : page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
