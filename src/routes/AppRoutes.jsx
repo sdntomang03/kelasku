@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
+import { App as CapacitorApp } from '@capacitor/app'
 import { apiRequest } from '../api/client'
 import Icon from '../components/common/Icon'
 import IntegrityModal from '../components/common/IntegrityModal'
@@ -101,6 +102,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const [profileOpen, setProfileOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
+  const isFinishingRef = useRef(false)
   const [timeLeft, setTimeLeft] = useState(76 * 60 + 24)
 
   useEffect(() => {
@@ -574,7 +576,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [])
 
   const finishExam = useCallback(async () => {
-    if (!selectedExam || !attemptId || isFinishing) return
+    if (!selectedExam || !attemptId || isFinishingRef.current) return
+    isFinishingRef.current = true
     setIsFinishing(true)
     try {
       const [result] = await Promise.all([
@@ -591,9 +594,45 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     } catch (error) {
       setDataError(getErrorMessage(error))
     } finally {
+      isFinishingRef.current = false
       setIsFinishing(false)
     }
-  }, [attemptId, isFinishing, navigate, selectedExam])
+  }, [attemptId, navigate, selectedExam])
+
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== 'android') return undefined
+
+    let disposed = false
+    let backButtonListener
+
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (routeKind === 'exam') {
+        if (!isFinishingRef.current && window.confirm('Akhiri ujian sekarang? Jika Anda memilih OK, jawaban akan dikirim dan ujian berakhir.')) {
+          void finishExam()
+        }
+        return
+      }
+
+      const historyIndex = window.history.state?.idx
+      const hasPreviousRoute = Number.isInteger(historyIndex) ? historyIndex > 0 : canGoBack
+      if (hasPreviousRoute) {
+        navigate(-1)
+        return
+      }
+
+      if (window.confirm('Keluar dari aplikasi Kelasku?')) void CapacitorApp.exitApp()
+    }).then((listener) => {
+      if (disposed) void listener.remove()
+      else backButtonListener = listener
+    }).catch((error) => {
+      if (!disposed) setDataError(getErrorMessage(error))
+    })
+
+    return () => {
+      disposed = true
+      if (backButtonListener) void backButtonListener.remove()
+    }
+  }, [finishExam, navigate, routeKind])
 
   const currentExam = selectedExam?.id && String(selectedExam.id) === String(examId)
     ? selectedExam
