@@ -25,7 +25,9 @@ import TokenPage from '../pages/TokenPage'
 import ExamAttemptPage from '../pages/ExamAttemptPage'
 import QuestionDiscussionPage from '../pages/QuestionDiscussionPage'
 import ResultDetailPage from '../pages/ResultDetailPage'
+import PremiumPage from '../pages/PremiumPage'
 import { attemptService } from '../services/attemptService'
+import { logOutRevenueCat } from '../services/revenueCatService'
 
 const PracticePage = lazy(() => import('../pages/PracticePage'))
 const LearnPage = lazy(() => import('../pages/LearnPage'))
@@ -48,6 +50,7 @@ export default function AppRoutes() {
       <Route path="/results/discussion" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/results/discussion/:questionId" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/profile" element={<RouteEntry routeKind="profile" />} />
+      <Route path="/premium" element={<RouteEntry routeKind="premium" />} />
       <Route path="/learn" element={<RouteEntry routeKind="learn" />} />
       <Route path="/learn/:categoryId" element={<RouteEntry routeKind="learn-category" />} />
       <Route path="/learn/:categoryId/:materialId" element={<RouteEntry routeKind="learn-detail" />} />
@@ -575,6 +578,23 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     setViolationState((state) => ({ ...state, warning: false }))
   }, [])
 
+  const handleLogout = useCallback(async (notifyServer = true) => {
+    try {
+      if (notifyServer) await apiRequest('/logout', { method: 'POST', body: {} })
+    } catch (error) {
+      setDataError(getErrorMessage(error))
+    } finally {
+      try {
+        await logOutRevenueCat()
+      } catch (error) {
+        setDataError(getErrorMessage(error))
+      }
+      localStorage.removeItem('cbt_token')
+      setAuthenticated(false)
+      navigate('/login')
+    }
+  }, [navigate])
+
   const finishExam = useCallback(async () => {
     if (!selectedExam || !attemptId || isFinishingRef.current) return
     isFinishingRef.current = true
@@ -753,12 +773,13 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           {canUseLocalPractice && <NavItem icon="book" label="Belajar" active={page.startsWith('learn')} onClick={() => { setMobileMenuOpen(false); navigate('/learn') }} />}
           {canUseLocalPractice && <NavItem icon="clipboard" label="Latihan" active={page.startsWith('practice')} onClick={() => { setMobileMenuOpen(false); navigate('/practice') }} />}
           <span className="nav-label nav-label-spaced">AKUN</span>
+          <NavItem icon="book" label="Kelasku Premium" active={page === 'premium'} onClick={() => { setMobileMenuOpen(false); navigate('/premium') }} />
           <NavItem icon="user" label="Profil saya" active={page === 'profile'} onClick={() => { setMobileMenuOpen(false); navigate('/profile') }} />
         </nav>
-        <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span>{supportWhatsAppUrl ? <a href={supportWhatsAppUrl} target="_blank" rel="noopener noreferrer">Hubungi kami <Icon name="arrow" size={14} /></a> : <span className="help-contact-unavailable">Kontak WhatsApp belum tersedia</span>}</div><button className="logout-button" onClick={async () => { try { await apiRequest('/logout', { method: 'POST', body: {} }) } finally { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') } }}><Icon name="logout" /> Keluar</button></div>
+        <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span>{supportWhatsAppUrl ? <a href={supportWhatsAppUrl} target="_blank" rel="noopener noreferrer">Hubungi kami <Icon name="arrow" size={14} /></a> : <span className="help-contact-unavailable">Kontak WhatsApp belum tersedia</span>}</div><button className="logout-button" onClick={() => void handleLogout()}><Icon name="logout" /> Keluar</button></div>
       </aside>
       <main className="main-content">
-        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page.startsWith('practice') ? 'Latihan' : page.startsWith('learn') ? 'Belajar' : page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
+        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page.startsWith('practice') ? 'Latihan' : page.startsWith('learn') ? 'Belajar' : page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : page === 'premium' ? 'Kelasku Premium' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button onClick={() => { setProfileOpen(false); void handleLogout(false) }} className="profile-logout"><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
         {dataError && <div className="api-error">{dataError}</div>}
         {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
         <div className="content-wrap">
@@ -768,6 +789,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : () => startExam('start')} />}
           {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} onDetail={() => navigate('/results/detail')} />}
           {page === 'profile' && <ProfilePage student={student} />}
+          {page === 'premium' && <PremiumPage student={student} />}
           {canUseLocalPractice && page.startsWith('learn') && <Suspense fallback={<div className="practice-state">Memuat materi belajar...</div>}><LearnPage categoryId={categoryId} materialId={materialId} navigate={navigate} /></Suspense>}
           {canUseLocalPractice && page.startsWith('practice') && <Suspense fallback={<div className="practice-state">Memuat menu latihan...</div>}><PracticePage categoryId={categoryId} packageId={packageId} mode={practiceMode} navigate={navigate} /></Suspense>}
         </div>
