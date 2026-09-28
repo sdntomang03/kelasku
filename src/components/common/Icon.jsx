@@ -11,6 +11,9 @@ const iconPaths = {
   chevronDown: 'm6 9 6 6 6-6',
   filter: 'M4 6h16M7 12h10M10 18h4',
   book: 'M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 0-2 2V5zm0 0v16a2 2 0 0 1 2-2h12',
+  lock: 'M5 11h14v10H5zM8 11V7a4 4 0 1 1 8 0v4',
+  star: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3z',
+  crown: 'm2 8 5 4 5-7 5 7 5-4-2 12H4L2 8zm2 15h16',
 }
 
 export default function Icon({ name, size = 19 }) {

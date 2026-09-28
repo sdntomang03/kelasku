@@ -11,15 +11,15 @@ let databasePromise
 let bundledDatabasePromise
 
 const schema = [
-  `CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT DEFAULT '', sort_order INTEGER DEFAULT 0)`,
-  `CREATE TABLE IF NOT EXISTS packages (id TEXT PRIMARY KEY, category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT DEFAULT '', difficulty TEXT DEFAULT '', sort_order INTEGER DEFAULT 0)`,
+  `CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT DEFAULT '', sort_order INTEGER DEFAULT 0, is_premium INTEGER NOT NULL DEFAULT 0)`,
+  `CREATE TABLE IF NOT EXISTS packages (id TEXT PRIMARY KEY, category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE, title TEXT NOT NULL, description TEXT DEFAULT '', difficulty TEXT DEFAULT '', sort_order INTEGER DEFAULT 0, is_premium INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS questions (id TEXT PRIMARY KEY, package_id TEXT NOT NULL REFERENCES packages(id) ON DELETE CASCADE, position INTEGER DEFAULT 0, type TEXT NOT NULL, content TEXT NOT NULL, explanation TEXT DEFAULT '')`,
   `CREATE TABLE IF NOT EXISTS options (id TEXT PRIMARY KEY, question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE, option_text TEXT NOT NULL, is_correct INTEGER DEFAULT 0, score_weight REAL, position INTEGER DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS matches (id TEXT PRIMARY KEY, question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE, premise_text TEXT NOT NULL, target_id TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS targets (id TEXT PRIMARY KEY, question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE, target_text TEXT NOT NULL, position INTEGER DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS practice_answers (package_id TEXT NOT NULL, question_id TEXT NOT NULL, answer TEXT, updated_at TEXT NOT NULL, PRIMARY KEY (package_id, question_id))`,
   `CREATE TABLE IF NOT EXISTS practice_package_settings (package_id TEXT PRIMARY KEY, grading_mode TEXT NOT NULL CHECK (grading_mode IN ('weighted', 'average')))`,
-  `CREATE TABLE IF NOT EXISTS learning_materials (id TEXT PRIMARY KEY, category_id TEXT REFERENCES categories(id) ON DELETE SET NULL, title TEXT NOT NULL, summary TEXT DEFAULT '', content TEXT NOT NULL, sort_order INTEGER DEFAULT 0)`,
+  `CREATE TABLE IF NOT EXISTS learning_materials (id TEXT PRIMARY KEY, category_id TEXT REFERENCES categories(id) ON DELETE SET NULL, title TEXT NOT NULL, summary TEXT DEFAULT '', content TEXT NOT NULL, sort_order INTEGER DEFAULT 0, is_premium INTEGER NOT NULL DEFAULT 0)`,
   `CREATE INDEX IF NOT EXISTS idx_learning_materials_category_order ON learning_materials(category_id, sort_order, title)`,
 ]
 
@@ -43,6 +43,12 @@ async function openDatabase() {
     const isOpen = await db.isDBOpen()
     if (!isOpen.result) await db.open()
     for (const statement of schema) await db.execute(statement)
+    for (const table of ['categories', 'packages', 'learning_materials']) {
+      const columns = await db.query(`PRAGMA table_info("${table}")`)
+      if (!columns.values?.some((column) => column.name === 'is_premium')) {
+        await db.execute(`ALTER TABLE "${table}" ADD COLUMN is_premium INTEGER NOT NULL DEFAULT 0`)
+      }
+    }
     if (Capacitor.getPlatform() === 'web') await sqlite.saveToStore(DATABASE_NAME)
     return db
   })().catch((error) => {
@@ -91,7 +97,7 @@ async function ensureBundledPracticeDatabase() {
     const response = await fetch(`${import.meta.env.BASE_URL}latihan-contoh.db`, { cache: 'no-cache' })
     if (!response.ok) throw new Error(`Database latihan bawaan gagal dimuat (${response.status}).`)
     const bytes = await response.arrayBuffer()
-    if (hasPracticeContent) await syncBundledLearningMaterials(bytes)
+    if (hasPracticeContent) await syncBundledPracticeContent(bytes)
     else await importPracticeDatabaseBytes(bytes)
   })().catch((error) => {
     bundledDatabasePromise = null
@@ -107,24 +113,26 @@ export async function refreshBundledPracticeDatabase() {
 
 export async function getPracticeCategories() {
   await ensureBundledPracticeDatabase()
-  return query(`SELECT c.id, c.name, c.description, COUNT(DISTINCT p.id) AS package_count
+  const categories = await query(`SELECT c.id, c.name, c.description, c.is_premium, COUNT(DISTINCT p.id) AS package_count
     FROM categories c LEFT JOIN packages p ON p.category_id = c.id
-    GROUP BY c.id, c.name, c.description ORDER BY c.sort_order, c.name`)
+    GROUP BY c.id, c.name, c.description, c.is_premium, c.sort_order ORDER BY c.sort_order, c.name`)
+  return categories.map((category) => ({ ...category, is_premium: toBoolean(category.is_premium) }))
 }
 
 export async function getPracticePackages(categoryId) {
   await ensureBundledPracticeDatabase()
-  return query(`SELECT p.id, p.category_id, p.title, p.description, p.difficulty,
+  const packages = await query(`SELECT p.id, p.category_id, p.title, p.description, p.difficulty, p.is_premium,
       COUNT(DISTINCT q.id) AS question_count
     FROM packages p LEFT JOIN questions q ON q.package_id = p.id
-    WHERE p.category_id = ? GROUP BY p.id, p.category_id, p.title, p.description, p.difficulty
+    WHERE p.category_id = ? GROUP BY p.id, p.category_id, p.title, p.description, p.difficulty, p.is_premium
     ORDER BY p.sort_order, p.title`, [categoryId])
+  return packages.map((item) => ({ ...item, is_premium: toBoolean(item.is_premium) }))
 }
 
 export async function getPracticePackage(categoryId, packageId) {
   await ensureBundledPracticeDatabase()
   const rows = await query('SELECT * FROM packages WHERE category_id = ? AND id = ?', [categoryId, packageId])
-  return rows[0] || null
+  return rows[0] ? { ...rows[0], is_premium: toBoolean(rows[0].is_premium) } : null
 }
 
 export async function getPracticeQuestions(packageId) {
@@ -153,27 +161,29 @@ export async function getPracticeQuestions(packageId) {
 
 export async function getLearningCategories() {
   await ensureBundledPracticeDatabase()
-  return query(`SELECT c.id, c.name, c.description, COUNT(m.id) AS material_count
+  const categories = await query(`SELECT c.id, c.name, c.description, c.is_premium, COUNT(m.id) AS material_count
     FROM categories c JOIN learning_materials m ON m.category_id = c.id
-    GROUP BY c.id, c.name, c.description, c.sort_order
+    GROUP BY c.id, c.name, c.description, c.is_premium, c.sort_order
     ORDER BY c.sort_order, c.name`)
+  return categories.map((category) => ({ ...category, is_premium: toBoolean(category.is_premium) }))
 }
 
 export async function getLearningMaterials(categoryId) {
   await ensureBundledPracticeDatabase()
-  const materials = await query(`SELECT m.id, m.category_id, m.title, m.summary, c.name AS category_name
+  const materials = await query(`SELECT m.id, m.category_id, m.title, m.summary, m.is_premium, c.name AS category_name
     FROM learning_materials m LEFT JOIN categories c ON c.id = m.category_id
     WHERE m.category_id = ?
     ORDER BY COALESCE(c.sort_order, 999), m.sort_order, m.title`, [categoryId])
   return materials.map((material) => ({
     ...material,
     summary: resolvePublicImages(material.summary || ''),
+    is_premium: toBoolean(material.is_premium),
   }))
 }
 
 export async function getLearningMaterial(categoryId, materialId) {
   await ensureBundledPracticeDatabase()
-  const rows = await query(`SELECT m.id, m.category_id, m.title, m.summary, m.content, c.name AS category_name
+  const rows = await query(`SELECT m.id, m.category_id, m.title, m.summary, m.content, m.is_premium, c.name AS category_name
     FROM learning_materials m LEFT JOIN categories c ON c.id = m.category_id
     WHERE m.category_id = ? AND m.id = ?`, [categoryId, materialId])
   const material = rows[0]
@@ -181,6 +191,7 @@ export async function getLearningMaterial(categoryId, materialId) {
     ...material,
     summary: resolvePublicImages(material.summary || ''),
     content: resolvePublicImages(material.content || ''),
+    is_premium: toBoolean(material.is_premium),
   } : null
 }
 
@@ -242,13 +253,13 @@ async function importPracticeDatabaseBytes(bytes) {
     }
     const db = await openDatabase()
     const inserts = [
-      ['categories', ['id', 'name', 'description', 'sort_order'], categories, (row) => [row.id, row.name, value(row, 'description', ''), value(row, 'sort_order', 0)]],
-      ['packages', ['id', 'category_id', 'title', 'description', 'difficulty', 'sort_order'], packages, (row) => [row.id, row.category_id, row.title, value(row, 'description', ''), value(row, 'difficulty', ''), value(row, 'sort_order', 0)]],
+      ['categories', ['id', 'name', 'description', 'sort_order', 'is_premium'], categories, (row) => [row.id, row.name, value(row, 'description', ''), value(row, 'sort_order', 0), value(row, 'is_premium', 0)]],
+      ['packages', ['id', 'category_id', 'title', 'description', 'difficulty', 'sort_order', 'is_premium'], packages, (row) => [row.id, row.category_id, row.title, value(row, 'description', ''), value(row, 'difficulty', ''), value(row, 'sort_order', 0), value(row, 'is_premium', 0)]],
       ['questions', ['id', 'package_id', 'position', 'type', 'content', 'explanation'], questions, (row) => [row.id, row.package_id, value(row, 'position', 0), row.type, row.content, value(row, 'explanation', '')]],
       ['options', ['id', 'question_id', 'option_text', 'is_correct', 'score_weight', 'position'], options, (row) => [row.id, row.question_id, row.option_text, value(row, 'is_correct', 0), value(row, 'score_weight'), value(row, 'position', 0)]],
       ['matches', ['id', 'question_id', 'premise_text', 'target_id'], matches, (row) => [row.id, row.question_id, row.premise_text, row.target_id]],
       ['targets', ['id', 'question_id', 'target_text', 'position'], targets, (row) => [row.id, row.question_id, row.target_text, value(row, 'position', 0)]],
-      ['learning_materials', ['id', 'category_id', 'title', 'summary', 'content', 'sort_order'], learningMaterials, (row) => [row.id, value(row, 'category_id'), row.title, value(row, 'summary', ''), row.content, value(row, 'sort_order', 0)]],
+      ['learning_materials', ['id', 'category_id', 'title', 'summary', 'content', 'sort_order', 'is_premium'], learningMaterials, (row) => [row.id, value(row, 'category_id'), row.title, value(row, 'summary', ''), row.content, value(row, 'sort_order', 0), value(row, 'is_premium', 0)]],
     ]
     const statements = [
       ...['learning_materials', 'options', 'matches', 'targets', 'questions', 'packages', 'categories'].map((table) => ({ statement: `DELETE FROM ${table}`, values: [] })),
@@ -266,32 +277,40 @@ async function importPracticeDatabaseBytes(bytes) {
   }
 }
 
-async function syncBundledLearningMaterials(bytes) {
+async function syncBundledPracticeContent(bytes) {
   const SQL = await initSqlJs({ locateFile: () => sqlWasmUrl })
   const source = new SQL.Database(new Uint8Array(bytes))
   try {
-    const hasMaterialsTable = source.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='learning_materials'").length > 0
-    if (!hasMaterialsTable) return
-
-    const materials = tableRows(source, 'learning_materials', ['id', 'title', 'content'])
+    const categories = tableRows(source, 'categories', ['id', 'name'])
+    const packages = tableRows(source, 'packages', ['id', 'category_id', 'title'])
+    const questions = tableRows(source, 'questions', ['id', 'package_id', 'type', 'content'])
+    const options = tableRows(source, 'options', ['id', 'question_id', 'option_text'])
+    const optionalRows = (table, columns) => {
+      const exists = source.exec(`SELECT name FROM sqlite_master WHERE type='table' AND name='${table}'`).length > 0
+      return exists ? tableRows(source, table, columns) : []
+    }
+    const matches = optionalRows('matches', ['id', 'question_id', 'premise_text', 'target_id'])
+    const targets = optionalRows('targets', ['id', 'question_id', 'target_text'])
+    const materials = optionalRows('learning_materials', ['id', 'title', 'content'])
     const db = await openDatabase()
-    const categories = await query('SELECT id FROM categories')
-    const categoryIds = new Set(categories.map((category) => String(category.id)))
-    const statements = [
-      { statement: 'DELETE FROM learning_materials', values: [] },
-      ...materials.map((material) => ({
-        statement: `INSERT INTO learning_materials (id, category_id, title, summary, content, sort_order)
-          VALUES (?, ?, ?, ?, ?, ?)`,
-        values: [
-          material.id,
-          categoryIds.has(String(value(material, 'category_id'))) ? material.category_id : null,
-          material.title,
-          value(material, 'summary', ''),
-          material.content,
-          value(material, 'sort_order', 0),
-        ],
-      })),
+    const inserts = [
+      ['categories', ['id', 'name', 'description', 'sort_order', 'is_premium'], categories, (row) => [row.id, row.name, value(row, 'description', ''), value(row, 'sort_order', 0), value(row, 'is_premium', 0)]],
+      ['packages', ['id', 'category_id', 'title', 'description', 'difficulty', 'sort_order', 'is_premium'], packages, (row) => [row.id, row.category_id, row.title, value(row, 'description', ''), value(row, 'difficulty', ''), value(row, 'sort_order', 0), value(row, 'is_premium', 0)]],
+      ['questions', ['id', 'package_id', 'position', 'type', 'content', 'explanation'], questions, (row) => [row.id, row.package_id, value(row, 'position', 0), row.type, row.content, value(row, 'explanation', '')]],
+      ['options', ['id', 'question_id', 'option_text', 'is_correct', 'score_weight', 'position'], options, (row) => [row.id, row.question_id, row.option_text, value(row, 'is_correct', 0), value(row, 'score_weight'), value(row, 'position', 0)]],
+      ['matches', ['id', 'question_id', 'premise_text', 'target_id'], matches, (row) => [row.id, row.question_id, row.premise_text, row.target_id]],
+      ['targets', ['id', 'question_id', 'target_text', 'position'], targets, (row) => [row.id, row.question_id, row.target_text, value(row, 'position', 0)]],
+      ['learning_materials', ['id', 'category_id', 'title', 'summary', 'content', 'sort_order', 'is_premium'], materials, (row) => [row.id, value(row, 'category_id'), row.title, value(row, 'summary', ''), row.content, value(row, 'sort_order', 0), value(row, 'is_premium', 0)]],
     ]
+    const statements = []
+    for (const [table, columns, rows, mapRow] of inserts) {
+      if (!rows.length) continue
+      const placeholders = columns.map(() => '?').join(', ')
+      const updates = columns.filter((column) => column !== 'id').map((column) => `${column} = excluded.${column}`).join(', ')
+      const statement = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})
+        ON CONFLICT(id) DO UPDATE SET ${updates}`
+      statements.push(...rows.map((row) => ({ statement, values: mapRow(row) })))
+    }
     await db.executeSet(statements, true)
     if (Capacitor.getPlatform() === 'web') await sqlite.saveToStore(DATABASE_NAME)
   } finally {

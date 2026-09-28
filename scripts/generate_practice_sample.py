@@ -10,7 +10,8 @@ CREATE TABLE categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
-  sort_order INTEGER DEFAULT 0
+  sort_order INTEGER DEFAULT 0,
+  is_premium INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE packages (
   id TEXT PRIMARY KEY,
@@ -18,7 +19,8 @@ CREATE TABLE packages (
   title TEXT NOT NULL,
   description TEXT DEFAULT '',
   difficulty TEXT DEFAULT '',
-  sort_order INTEGER DEFAULT 0
+  sort_order INTEGER DEFAULT 0,
+  is_premium INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE questions (
   id TEXT PRIMARY KEY,
@@ -54,12 +56,13 @@ CREATE TABLE learning_materials (
   title TEXT NOT NULL,
   summary TEXT DEFAULT '',
   content TEXT NOT NULL,
-  sort_order INTEGER DEFAULT 0
+  sort_order INTEGER DEFAULT 0,
+  is_premium INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX idx_learning_materials_category_order
   ON learning_materials(category_id, sort_order, title);
 
-INSERT INTO categories VALUES
+INSERT INTO categories (id, name, description, sort_order) VALUES
   ('tkp', 'TKP', 'Tes Karakteristik Pribadi', 1),
   ('twk', 'TWK', 'Tes Wawasan Kebangsaan', 2),
   ('tiu', 'TIU', 'Tes Intelegensia Umum', 3);
@@ -78,7 +81,7 @@ INSERT INTO learning_materials (id, category_id, title, summary, content, sort_o
    '<h2>Variabel dan persamaan</h2><p>Variabel adalah lambang yang mewakili suatu nilai, biasanya ditulis dengan huruf seperti $x$ atau $y$. Persamaan linear satu variabel dapat ditulis dalam bentuk $ax + b = c$, dengan $a \\ne 0$.</p><h3>Langkah penyelesaian</h3><p>Lakukan operasi yang sama pada kedua ruas agar variabel berada di satu ruas dan konstanta di ruas lainnya.</p><p>Contoh: selesaikan $2x + 3 = 11$.</p><ol><li>Kurangi kedua ruas dengan 3: $2x = 8$.</li><li>Bagi kedua ruas dengan 2: $x = 4$.</li></ol><p>Periksa hasil dengan memasukkan kembali nilai $x$: $2(4) + 3 = 11$.</p>',
    1);
 
-INSERT INTO packages VALUES
+INSERT INTO packages (id, category_id, title, description, difficulty, sort_order) VALUES
   ('tkp-paket-1', 'tkp', 'Paket 1', 'Latihan situasi kerja dan pelayanan publik.', 'Dasar', 1),
   ('twk-paket-1', 'twk', 'Paket 1', 'Latihan wawasan kebangsaan.', 'Dasar', 1),
   ('tiu-paket-1', 'tiu', 'Paket 1', 'Latihan kemampuan numerik dan logika.', 'Dasar', 1);

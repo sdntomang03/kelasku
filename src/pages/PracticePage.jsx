@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Icon from '../components/common/Icon'
+import PremiumGate from '../components/common/PremiumGate'
 import ImageRichContent from '../components/content/ImageRichContent'
 import MathContent from '../components/content/MathContent'
 import QuestionAnswer from '../components/exam/QuestionAnswer'
@@ -14,7 +15,7 @@ import {
   savePracticeAnswer,
 } from '../services/practiceDatabase'
 
-export default function PracticePage({ categoryId, packageId, mode, navigate }) {
+export default function PracticePage({ categoryId, packageId, mode, navigate, premiumStatus, premiumStatusLoading = false }) {
   const [categories, setCategories] = useState([])
   const [packages, setPackages] = useState([])
   const [category, setCategory] = useState(null)
@@ -42,16 +43,28 @@ export default function PracticePage({ categoryId, packageId, mode, navigate }) 
           setPackages(categoryPackages)
         }
       } else {
-        const [allCategories, packageInfo, packageQuestions, savedAnswers, packageGradingMode] = await Promise.all([
+        const [allCategories, packageInfo] = await Promise.all([
           getPracticeCategories(),
           getPracticePackage(categoryId, packageId),
+        ])
+        const selectedCategory = allCategories.find((item) => String(item.id) === String(categoryId)) || null
+        if (!cancelled) {
+          setCategory(selectedCategory)
+          setPracticePackage(packageInfo)
+        }
+        if ((selectedCategory?.is_premium || packageInfo?.is_premium) && premiumStatus?.is_premium !== true) {
+          if (!cancelled) {
+            setQuestions([])
+            setAnswers({})
+          }
+          return
+        }
+        const [packageQuestions, savedAnswers, packageGradingMode] = await Promise.all([
           getPracticeQuestions(packageId),
           getPracticeAnswers(packageId),
           getPracticeGradingMode(packageId),
         ])
         if (!cancelled) {
-          setCategory(allCategories.find((item) => String(item.id) === String(categoryId)) || null)
-          setPracticePackage(packageInfo)
           setQuestions(packageQuestions)
           setAnswers(savedAnswers)
           setGradingMode(packageGradingMode)
@@ -72,7 +85,7 @@ export default function PracticePage({ categoryId, packageId, mode, navigate }) 
       }
     })
     return () => { cancelled = true }
-  }, [categoryId, packageId])
+  }, [categoryId, packageId, premiumStatus?.is_premium])
 
   const updateAnswer = async (questionId, answer) => {
     setAnswers((current) => ({ ...current, [questionId]: answer }))
@@ -103,6 +116,15 @@ export default function PracticePage({ categoryId, packageId, mode, navigate }) 
   }
 
   if (loading) return <div className="practice-state"><span className="loading-spinner" /><strong>Memuat latihan lokal...</strong></div>
+  const hasPremiumAccess = premiumStatus?.is_premium === true
+
+  if (categoryId && category?.is_premium && !hasPremiumAccess) {
+    return <PremiumGate navigate={navigate} title="Kategori latihan Premium" checking={premiumStatusLoading} />
+  }
+  if (practicePackage?.is_premium && !hasPremiumAccess) {
+    return <PremiumGate navigate={navigate} title="Paket latihan Premium" checking={premiumStatusLoading} />
+  }
+
   if (mode === 'result' && practicePackage && questions.length) {
     const reviewedQuestions = questions.map((question) => ({
       question,
@@ -174,13 +196,19 @@ export default function PracticePage({ categoryId, packageId, mode, navigate }) 
     <div className="practice-breadcrumb"><button onClick={() => navigate('/practice')}>Latihan</button><span>/</span><strong>{category?.name || 'Kategori'}</strong></div>
     <section className="practice-heading"><div><p className="eyebrow">PILIH PAKET</p><h1>{category?.name || 'Kategori latihan'}</h1><p className="muted">{category?.description || 'Pilih paket soal untuk mulai latihan.'}</p></div><button className="secondary-button" onClick={() => navigate('/practice')}>Semua kategori</button></section>
     {error && <div className="practice-inline-error" role="alert">{error}</div>}
-    {packages.length ? <div className="practice-package-grid">{packages.map((item, index) => <button className="practice-package-card" key={item.id} onClick={() => navigate(`/practice/${categoryId}/${item.id}/attempt`)}><span className="practice-package-number">PAKET {index + 1}</span><strong>{item.title}</strong><span className="muted">{item.description || item.difficulty || 'Latihan mandiri'} · {item.question_count} soal</span><span className="practice-package-action">Mulai latihan <Icon name="arrow" size={15} /></span></button>)}</div> : <PracticeEmpty />}
+    {packages.length ? <div className="practice-package-grid">{packages.map((item, index) => {
+      const locked = (category?.is_premium || item.is_premium) && !hasPremiumAccess
+      return <button className={`practice-package-card ${locked ? 'premium-locked-card' : ''}`} key={item.id} onClick={() => navigate(locked ? '/premium' : `/practice/${categoryId}/${item.id}/attempt`)}><span className="practice-package-number">{locked ? 'PREMIUM' : `PAKET ${index + 1}`}</span><strong>{locked ? 'Paket latihan Premium' : item.title}</strong><span className="muted">{locked ? 'Buka keanggotaan Premium untuk mengakses paket ini.' : `${item.description || item.difficulty || 'Latihan mandiri'} · ${item.question_count} soal`}</span><span className="practice-package-action">{locked ? 'Lihat Premium' : 'Mulai latihan'} <Icon name={locked ? 'lock' : 'arrow'} size={15} /></span></button>
+    })}</div> : <PracticeEmpty />}
   </div>
 
   return <div className="page-enter practice-page">
     <section className="practice-heading"><div><p className="eyebrow">BELAJAR MANDIRI</p><h1>Latihan</h1><p className="muted">Pilih materi latihan untuk mulai berlatih secara mandiri.</p></div></section>
     {error && <div className="practice-inline-error" role="alert">{error}</div>}
-    {categories.length ? <div className="practice-category-grid">{categories.map((item, index) => <button className="practice-category-card" key={item.id} onClick={() => navigate(`/practice/${item.id}`)}><span className={`practice-category-icon tone-${index % 3}`}><Icon name="book" size={21} /></span><strong>{item.name}</strong><span>{item.description || 'Latihan soal pilihan'}</span><small>{item.package_count} paket <Icon name="arrow" size={14} /></small></button>)}</div> : <PracticeEmpty />}
+    {categories.length ? <div className="practice-category-grid">{categories.map((item, index) => {
+      const locked = item.is_premium && !hasPremiumAccess
+      return <button className={`practice-category-card ${locked ? 'premium-locked-card' : ''}`} key={item.id} onClick={() => navigate(locked ? '/premium' : `/practice/${item.id}`)}><span className={`practice-category-icon tone-${index % 3}`}><Icon name={locked ? 'lock' : 'book'} size={21} /></span><strong>{locked ? 'Kategori Premium' : item.name}</strong><span>{locked ? 'Akses kategori ini dengan Premium.' : item.description || 'Latihan soal pilihan'}</span><small>{locked ? 'Lihat Premium' : `${item.package_count} paket`} <Icon name="arrow" size={14} /></small></button>
+    })}</div> : <PracticeEmpty />}
   </div>
 }
 

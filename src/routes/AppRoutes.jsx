@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
+import { App as CapacitorApp } from '@capacitor/app'
 import { apiRequest } from '../api/client'
 import Icon from '../components/common/Icon'
 import IntegrityModal from '../components/common/IntegrityModal'
@@ -9,6 +10,7 @@ import { dashboardService } from '../services/dashboardService'
 import { examService } from '../services/examService'
 import { getErrorMessage } from '../utils/api'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
+import { premiumService } from '../services/premiumService'
 import { randomizeQuestion, shuffle } from '../utils/question'
 import { examRequiresToken, getClassName, getSchoolName, isExamCompleted, isExamLocked } from '../utils/exam'
 import { useExamAttempt } from '../hooks/useExamAttempt'
@@ -28,6 +30,7 @@ import { attemptService } from '../services/attemptService'
 
 const PracticePage = lazy(() => import('../pages/PracticePage'))
 const LearnPage = lazy(() => import('../pages/LearnPage'))
+const PremiumPage = lazy(() => import('../pages/PremiumPage'))
 
 function Logo() {
   return <div className="brand"><span className="brand-mark">C</span><span>kelas<span className="brand-accent">ku</span></span></div>
@@ -47,6 +50,7 @@ export default function AppRoutes() {
       <Route path="/results/discussion" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/results/discussion/:questionId" element={<RouteEntry routeKind="discussion" />} />
       <Route path="/profile" element={<RouteEntry routeKind="profile" />} />
+      <Route path="/premium" element={<RouteEntry routeKind="premium" />} />
       <Route path="/learn" element={<RouteEntry routeKind="learn" />} />
       <Route path="/learn/:categoryId" element={<RouteEntry routeKind="learn-category" />} />
       <Route path="/learn/:categoryId/:materialId" element={<RouteEntry routeKind="learn-detail" />} />
@@ -69,6 +73,9 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
 
   const [authenticated, setAuthenticated] = useState(() => Boolean(localStorage.getItem('cbt_token')))
   const [student, setStudent] = useState(null)
+  const [premiumStatus, setPremiumStatus] = useState(null)
+  const [premiumStatusLoading, setPremiumStatusLoading] = useState(() => Boolean(localStorage.getItem('cbt_token')))
+  const [premiumStatusError, setPremiumStatusError] = useState('')
   const [exams, setExams] = useState([])
   const [dashboard, setDashboard] = useState(null)
   const [selectedExam, setSelectedExam] = useState(null)
@@ -135,6 +142,53 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const completed = useMemo(() => exams.filter(isExamCompleted), [exams])
   const answeredCount = Object.keys(answers).length
 
+  const refreshPremiumStatus = useCallback(async () => {
+    setPremiumStatusLoading(true)
+    setPremiumStatusError('')
+    setPremiumStatus(null)
+    try {
+      const status = await premiumService.status()
+      setPremiumStatus(status)
+    } catch (error) {
+      setPremiumStatus(null)
+      setPremiumStatusError(getErrorMessage(error))
+    } finally {
+      setPremiumStatusLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!authenticated) return undefined
+    let cancelled = false
+    premiumService.status()
+      .then((status) => {
+        if (!cancelled) setPremiumStatus(status)
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setPremiumStatus(null)
+          setPremiumStatusError(getErrorMessage(error))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPremiumStatusLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [authenticated])
+
+  useEffect(() => {
+    if (!authenticated) return undefined
+    const refreshWhenActive = () => {
+      if (document.visibilityState === 'visible') void refreshPremiumStatus()
+    }
+    window.addEventListener('focus', refreshWhenActive)
+    document.addEventListener('visibilitychange', refreshWhenActive)
+    return () => {
+      window.removeEventListener('focus', refreshWhenActive)
+      document.removeEventListener('visibilitychange', refreshWhenActive)
+    }
+  }, [authenticated, refreshPremiumStatus])
+
   useExamTimer({ timeLeft, setTimeLeft, enabled: routeKind === 'exam' })
 
   useEffect(() => {
@@ -167,6 +221,9 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         if (error?.status === 401) {
           localStorage.removeItem('cbt_token')
           setStudent(null)
+          setPremiumStatus(null)
+          setPremiumStatusError('')
+          setPremiumStatusLoading(false)
           setAuthenticated(false)
           window.location.replace('/login')
           setDataError('Sesi login telah berakhir. Silakan masuk kembali.')
@@ -343,6 +400,9 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       const data = await authService.login(login)
       localStorage.setItem('cbt_token', data.token)
       setUnverifiedLoginAttempts(0)
+      setPremiumStatus(null)
+      setPremiumStatusError('')
+      setPremiumStatusLoading(true)
       setStudent(data.student)
       setAuthenticated(true)
       navigate('/dashboard', { replace: true })
@@ -595,6 +655,37 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     }
   }, [attemptId, isFinishing, navigate, selectedExam])
 
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== 'android') return undefined
+    let active = true
+    let backButtonListener
+
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (routeKind === 'exam') {
+        if (!isFinishing && window.confirm('Akhiri ujian sekarang? Jawaban yang sudah tersimpan akan dikirim dan ujian tidak dapat dilanjutkan.')) {
+          void finishExam()
+        }
+        return
+      }
+
+      if (canGoBack) {
+        navigate(-1)
+      } else if (window.confirm('Keluar dari aplikasi Kelasku?')) {
+        void CapacitorApp.exitApp()
+      }
+    }).then((listener) => {
+      if (active) backButtonListener = listener
+      else void listener.remove()
+    }).catch((error) => {
+      if (active) setDataError(getErrorMessage(error))
+    })
+
+    return () => {
+      active = false
+      if (backButtonListener) void backButtonListener.remove()
+    }
+  }, [finishExam, isFinishing, navigate, routeKind])
+
   const currentExam = selectedExam?.id && String(selectedExam.id) === String(examId)
     ? selectedExam
     : exams.find((exam) => String(exam.id) === String(examId)) || selectedExam || null
@@ -624,7 +715,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
 
   if (routeKind === 'login') return <Navigate to="/dashboard" replace />
   if (isLoading && !student) return <div className="loading-screen"><Logo /><p>Memuat data akun...</p></div>
-  if (!student) return <div className="loading-screen"><Logo /><p>{dataError || 'Data akun tidak dapat dimuat.'}</p><button className="primary-button" onClick={() => { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}>Kembali ke login</button></div>
+  if (!student) return <div className="loading-screen"><Logo /><p>{dataError || 'Data akun tidak dapat dimuat.'}</p><button className="primary-button" onClick={() => { localStorage.removeItem('cbt_token'); setPremiumStatus(null); setPremiumStatusError(''); setPremiumStatusLoading(false); setAuthenticated(false); navigate('/login') }}>Kembali ke login</button></div>
 
   const page = routeKind
   const isAndroid = Capacitor.getPlatform() === 'android'
@@ -633,7 +724,6 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const canUseLocalPractice = isAndroid || isLocalPracticeWebEnabled
   const isAndroidLearningPage = page.startsWith('learn') || page.startsWith('practice')
   const practiceMode = routeKind === 'practice-attempt' ? 'attempt' : routeKind === 'practice-result' ? 'result' : undefined
-
   if (page === 'exam') {
     return (
       <ExamAttemptPage
@@ -713,13 +803,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           <NavItem icon="chart" label="Hasil ujian" active={page === 'results'} onClick={() => { setMobileMenuOpen(false); navigate('/results') }} />
           {canUseLocalPractice && <NavItem icon="book" label="Belajar" active={page.startsWith('learn')} onClick={() => { setMobileMenuOpen(false); navigate('/learn') }} />}
           {canUseLocalPractice && <NavItem icon="clipboard" label="Latihan" active={page.startsWith('practice')} onClick={() => { setMobileMenuOpen(false); navigate('/practice') }} />}
+          <NavItem icon="crown" label="Premium" active={page === 'premium'} onClick={() => { setMobileMenuOpen(false); navigate('/premium') }} />
           <span className="nav-label nav-label-spaced">AKUN</span>
           <NavItem icon="user" label="Profil saya" active={page === 'profile'} onClick={() => { setMobileMenuOpen(false); navigate('/profile') }} />
         </nav>
-        <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span>{supportWhatsAppUrl ? <a href={supportWhatsAppUrl} target="_blank" rel="noopener noreferrer">Hubungi kami <Icon name="arrow" size={14} /></a> : <span className="help-contact-unavailable">Kontak WhatsApp belum tersedia</span>}</div><button className="logout-button" onClick={async () => { try { await apiRequest('/logout', { method: 'POST', body: {} }) } finally { localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') } }}><Icon name="logout" /> Keluar</button></div>
+        <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><strong>Butuh bantuan?</strong><span>Tim kami siap membantu kamu.</span>{supportWhatsAppUrl ? <a href={supportWhatsAppUrl} target="_blank" rel="noopener noreferrer">Hubungi kami <Icon name="arrow" size={14} /></a> : <span className="help-contact-unavailable">Kontak WhatsApp belum tersedia</span>}</div><button className="logout-button" onClick={async () => { try { await apiRequest('/logout', { method: 'POST', body: {} }) } finally { localStorage.removeItem('cbt_token'); setPremiumStatus(null); setPremiumStatusError(''); setPremiumStatusLoading(false); setAuthenticated(false); navigate('/login') } }}><Icon name="logout" /> Keluar</button></div>
       </aside>
       <main className="main-content">
-        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page.startsWith('practice') ? 'Latihan' : page.startsWith('learn') ? 'Belajar' : page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
+        <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page === 'premium' ? 'Premium' : page.startsWith('practice') ? 'Latihan' : page.startsWith('learn') ? 'Belajar' : page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setPremiumStatus(null); setPremiumStatusError(''); setPremiumStatusLoading(false); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
         {dataError && <div className="api-error">{dataError}</div>}
         {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
         <div className="content-wrap">
@@ -729,8 +820,9 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           {page === 'exam-detail' && <ExamDetailPage exam={currentExam} onBack={() => navigate('/exams')} onStart={examRequiresToken(currentExam) ? openTokenPage : () => startExam('start')} />}
           {page === 'results' && <ResultsPage exams={completed} result={examResult} allowExplanation={false} onDetail={() => navigate('/results/detail')} />}
           {page === 'profile' && <ProfilePage student={student} />}
-          {canUseLocalPractice && page.startsWith('learn') && <Suspense fallback={<div className="practice-state">Memuat materi belajar...</div>}><LearnPage categoryId={categoryId} materialId={materialId} navigate={navigate} /></Suspense>}
-          {canUseLocalPractice && page.startsWith('practice') && <Suspense fallback={<div className="practice-state">Memuat menu latihan...</div>}><PracticePage categoryId={categoryId} packageId={packageId} mode={practiceMode} navigate={navigate} /></Suspense>}
+          {page === 'premium' && <Suspense fallback={<div className="practice-state">Memuat Premium...</div>}><PremiumPage status={premiumStatus} statusLoading={premiumStatusLoading} statusError={premiumStatusError} onRefreshStatus={refreshPremiumStatus} /></Suspense>}
+          {canUseLocalPractice && page.startsWith('learn') && <Suspense fallback={<div className="practice-state">Memuat materi belajar...</div>}><LearnPage categoryId={categoryId} materialId={materialId} navigate={navigate} premiumStatus={premiumStatus} premiumStatusLoading={premiumStatusLoading} /></Suspense>}
+          {canUseLocalPractice && page.startsWith('practice') && <Suspense fallback={<div className="practice-state">Memuat menu latihan...</div>}><PracticePage categoryId={categoryId} packageId={packageId} mode={practiceMode} navigate={navigate} premiumStatus={premiumStatus} premiumStatusLoading={premiumStatusLoading} /></Suspense>}
         </div>
         <footer className="app-footer">Copyright @2026</footer>
       </main>

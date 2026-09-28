@@ -72,7 +72,13 @@ npm run preview
 
 Database SQLite bawaan berada di `public/latihan-contoh.db`. Vite menyalinnya ke `dist/latihan-contoh.db` saat build. Capacitor kemudian menyalin web bundle beserta file database tersebut ke Android.
 
-Skema konten mencakup kategori, paket, soal, opsi, pasangan menjodohkan, target pasangan, dan materi belajar. Jawaban serta pengaturan latihan siswa disimpan oleh aplikasi secara lokal, bukan di database konten bawaan.
+Skema konten mencakup kategori, paket, soal, opsi, pasangan menjodohkan, target pasangan, dan materi belajar. Kolom `is_premium` (0/1) pada kategori, paket, dan materi mengatur penandaan konten Premium. Jawaban serta pengaturan latihan siswa disimpan oleh aplikasi secara lokal, bukan di database konten bawaan. Aplikasi memeriksa `GET /premium/status` sebelum menampilkan konten bertanda Premium; pastikan `is_premium` hanya dipakai untuk menyembunyikan UI, bukan sebagai perlindungan konten.
+
+**Penting:** `public/latihan-contoh.db` disalin ke dalam bundle web/Android dan dapat diekstrak. Menandai baris Premium, mengunci layar, atau mengenkripsi database dengan kunci yang ditanam di aplikasi tidak dapat mencegah pengguna mahir mengambil isi database. Jangan simpan soal/materi rahasia atau jawaban kunci premium di database publik. Untuk perlindungan nyata, hilangkan konten Premium dari bundle lokal dan layani lewat endpoint backend yang memverifikasi token serta status premium pada setiap permintaan.
+
+Konten yang ditandai Premium pada kategori, paket, atau materi menggunakan kolom integer `is_premium` bernilai `1`; konten umum bernilai `0`. Database runtime yang lama dimigrasikan otomatis. Pada pembaruan aplikasi, konten bawaan digabungkan berdasarkan ID agar materi/paket/soal Premium baru ikut tersedia tanpa menghapus jawaban latihan yang tersimpan. Contoh database saat ini berisi satu materi dan satu paket Premium orisinal TKA SD.
+
+Status keanggotaan diperiksa melalui `GET /premium/status`; paket dan checkout memakai `GET /premium/plans` serta `POST /premium/checkout`. Harga berasal dari API server, dan React hanya mengarahkan siswa ke `redirect_url`; premium tidak diaktifkan berdasarkan redirect sukses. Endpoint premium harus tersedia di backend dengan autentikasi yang sama seperti endpoint siswa.
 
 Script pembuat database contoh:
 
