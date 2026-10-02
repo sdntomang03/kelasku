@@ -31,7 +31,7 @@ const PracticePage = lazy(() => import('../pages/PracticePage'))
 const LearnPage = lazy(() => import('../pages/LearnPage'))
 
 function Logo() {
-  return <div className="brand"><span className="brand-mark">C</span><span>kelas<span className="brand-accent">ku</span></span></div>
+  return <div className="brand"><span className="brand-mark">C</span><span>TKA<span className="brand-accent">SD</span></span></div>
 }
 
 export default function AppRoutes() {

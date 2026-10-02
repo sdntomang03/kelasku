@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
 
 function Logo() {
-  return <div className="brand"><span className="brand-mark">C</span><span>kelas<span className="brand-accent">ku</span></span></div>
+  return <div className="brand"><span className="brand-mark">C</span><span>TKA<span className="brand-accent">SD</span></span></div>
 }
 
 function fieldError(errors, name) {
@@ -75,7 +75,9 @@ export default function LoginPage({
             <label htmlFor="username">Username atau NIS<input id="username" value={login.username} onChange={(event) => { onLoginIdentityChange(); setLogin((current) => ({ ...current, username: event.target.value })) }} placeholder="Masukkan username" autoComplete="username" disabled={loading} required /></label>
             <label htmlFor="password">Password<input id="password" type="password" value={login.password} onChange={(event) => setLogin((current) => ({ ...current, password: event.target.value }))} placeholder="Masukkan password" autoComplete="current-password" disabled={loading} required /></label>
             {error && <div className="field-error" role="alert"><span aria-hidden="true">!</span><p>{error}</p></div>}
-            <button type="submit" className="primary-button wide" disabled={loading}>{loading ? 'Memproses...' : 'Masuk'}</button>
+            <button type="submit" className="primary-button wide login-submit-button" disabled={loading}>
+              <span>{loading ? 'Memproses...' : 'Masuk'}</span>
+            </button>
           </form>
           {unverifiedLoginAttempts >= 3 && <section className="login-verification-prompt" aria-live="polite">
             <strong>Akun belum terverifikasi?</strong>
