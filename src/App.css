@@ -237,6 +237,20 @@
 .learn-content-body{color:var(--ink);font-size:14px;line-height:1.85;overflow-wrap:anywhere}
 .learn-content-body img{max-width:100%;height:auto;border-radius:10px}
 .learn-content-body pre{max-width:100%;overflow:auto}
+.learn-content-body table,.question-content table,.rich-text table{width:100%;max-width:100%;margin:18px 0;border:1px solid #e3e7f0;border-collapse:separate;border-spacing:0;border-radius:12px;background:#fff;font-size:.92em;line-height:1.6}
+.learn-content-body th,.learn-content-body td,.question-content th,.question-content td,.rich-text th,.rich-text td{padding:11px 14px;border-right:1px solid #e8ebf2;border-bottom:1px solid #e8ebf2;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.learn-content-body tr:first-child td,.question-content tr:first-child td,.rich-text tr:first-child td{background:#f5f6fb;color:#39445a;font-weight:800}
+.learn-content-body tr:last-child td,.learn-content-body tr:last-child th,.question-content tr:last-child td,.question-content tr:last-child th,.rich-text tr:last-child td,.rich-text tr:last-child th{border-bottom:0}
+.learn-content-body td:last-child,.learn-content-body th:last-child,.question-content td:last-child,.question-content th:last-child,.rich-text td:last-child,.rich-text th:last-child{border-right:0}
+.learn-content-body thead th,.question-content thead th,.rich-text thead th{background:#f5f6fb;color:#39445a;font-weight:800}
+.learn-content-body .ai-table-scroll,.question-content .ai-table-scroll,.rich-text .ai-table-scroll{max-width:100%;margin:18px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.learn-content-body .ai-table-scroll table,.question-content .ai-table-scroll table,.rich-text .ai-table-scroll table{min-width:100%;margin:0}
+.learn-content-body details,.question-content details,.rich-text details{margin:14px 0;padding:14px 16px;border:1px solid #e5e7f1;border-radius:12px;background:#fafaff}
+.learn-content-body summary,.question-content summary,.rich-text summary{color:#5142ae;font-weight:800;cursor:pointer}
+.learn-content-body details[open]>summary,.question-content details[open]>summary,.rich-text details[open]>summary{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e5e7f1}
+.learn-content-body details>:last-child,.question-content details>:last-child,.rich-text details>:last-child{margin-bottom:0}
+.learn-content-body .katex-display,.question-content .katex-display,.rich-text .katex-display{max-width:100%;overflow-x:auto;overflow-y:hidden;padding:5px 0}
+@media(max-width:600px){.learn-content-body table,.question-content table,.rich-text table{display:block;overflow-x:auto}}
 .learn-page code{padding:2px 5px;border-radius:4px;background:#f3f2fb;color:#6554c9;font-size:.9em}
 jeep-sqlite{display:none}
 .practice-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:24px}
