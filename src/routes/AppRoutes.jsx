@@ -103,6 +103,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
   const isFinishingRef = useRef(false)
+  const autoFinishedAttemptRef = useRef(null)
   const [timeLeft, setTimeLeft] = useState(76 * 60 + 24)
 
   useEffect(() => {
@@ -575,7 +576,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     setViolationState((state) => ({ ...state, warning: false }))
   }, [])
 
-  const finishExam = useCallback(async () => {
+  const finishExam = useCallback(async (redirectPath = '/results') => {
     if (!selectedExam || !attemptId || isFinishingRef.current) return
     isFinishingRef.current = true
     setIsFinishing(true)
@@ -590,7 +591,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       setDashboard(dashboardData)
       setExams(Array.isArray(examData) ? examData : [])
       localStorage.removeItem(`cbt_exam_attempt_${selectedExam.id}`)
-      navigate('/results')
+      navigate(redirectPath)
     } catch (error) {
       setDataError(getErrorMessage(error))
     } finally {
@@ -598,6 +599,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       setIsFinishing(false)
     }
   }, [attemptId, navigate, selectedExam])
+
+  useEffect(() => {
+    if (routeKind !== 'exam' || timeLeft > 0 || !attemptId || isFinishingRef.current) return
+    if (autoFinishedAttemptRef.current === attemptId) return
+
+    autoFinishedAttemptRef.current = attemptId
+    void finishExam('/dashboard')
+  }, [attemptId, finishExam, routeKind, timeLeft])
 
   useEffect(() => {
     if (Capacitor.getPlatform() !== 'android') return undefined
