@@ -110,6 +110,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const [autoFinishRetry, setAutoFinishRetry] = useState(0)
   const [timeLeft, setTimeLeft] = useState(76 * 60 + 24)
   const [timerAttemptId, setTimerAttemptId] = useState(null)
+  const [fullscreenError, setFullscreenError] = useState('')
 
   useEffect(() => {
     if (!integrityOpen) return undefined
@@ -503,14 +504,17 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [navigate, selectedExam, setTimerAttemptId])
 
   const requestExamFullscreen = useCallback(() => {
-    if (document.fullscreenElement) return
-    if (!document.documentElement.requestFullscreen) {
-      setDataError('Perangkat atau browser ini tidak mendukung mode layar penuh untuk ujian.')
+    if (document.fullscreenElement) {
+      setFullscreenError('')
       return
     }
-    document.documentElement.requestFullscreen().catch(() => {
-      setDataError('Mode layar penuh tidak dapat diaktifkan. Izinkan layar penuh untuk melanjutkan ujian.')
-    })
+    if (!document.documentElement.requestFullscreen) {
+      setFullscreenError('Perangkat atau browser ini tidak mendukung mode layar penuh untuk ujian.')
+      return
+    }
+    document.documentElement.requestFullscreen()
+      .then(() => setFullscreenError(''))
+      .catch(() => setFullscreenError('Mode layar penuh tidak dapat diaktifkan. Tekan tombol di bawah untuk mencoba lagi.'))
   }, [])
 
   const confirmIntegrity = useCallback(async () => {
@@ -747,6 +751,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         timeLeft={timeLeft}
         isTimeExpired={isTimeExpired}
         requestFullscreen={requestExamFullscreen}
+        fullscreenError={fullscreenError}
         questionError={dataError}
         enableViolation={Boolean(examConfig.enable_violation)}
         violationState={violationState}
