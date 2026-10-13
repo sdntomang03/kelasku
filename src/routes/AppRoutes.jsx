@@ -151,7 +151,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   useExamTimer({
     timeLeft,
     setTimeLeft,
-    enabled: routeKind === 'exam' && timerAttemptId === attemptId && Boolean(currentQuestion),
+    enabled: routeKind === 'exam' && timerAttemptId === attemptId && Boolean(attemptId),
   })
 
   useEffect(() => {
@@ -589,6 +589,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       })
       setSubmittedAttemptId(null)
       setExamResult(null)
+      autoFinishedAttemptRef.current = null
+      localStorage.removeItem(`cbt_completed_attempt_${selectedExam.id}`)
       setSelectedExam({ ...selectedExam, ...data.exam, attempt: data.attempt, question_ids: data.question_ids })
       setAttempt(data.attempt)
       setExamConfig(data.config || { random_question: false, random_answer: false })
@@ -707,7 +709,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [attemptId, navigate, recordSubmittedAttempt, showTimeoutResultAlert])
 
   const finishTimedOutExam = useCallback(() => {
-    if (!attemptId || isFinishingRef.current || autoFinishedAttemptRef.current === attemptId) return
+    if (!attemptId || submittedAttemptId === attemptId || attempt?.status === 'completed' || isFinishingRef.current || autoFinishedAttemptRef.current === attemptId) return
 
     autoFinishedAttemptRef.current = attemptId
     void finishExam(null, true).then((submitted) => {
@@ -716,12 +718,20 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         setTimeout(() => setAutoFinishRetry((retry) => retry + 1), 5000)
       }
     })
-  }, [attemptId, finishExam])
+  }, [attempt, attemptId, finishExam, submittedAttemptId])
 
   useEffect(() => {
     if (routeKind !== 'exam' || timerAttemptId !== attemptId || Number(timeLeft) > 0 || !attemptId || isFinishingRef.current) return
     finishTimedOutExam()
   }, [attemptId, autoFinishRetry, finishTimedOutExam, routeKind, timeLeft, timerAttemptId])
+
+  const viewExamResults = useCallback(() => {
+    if (submittedAttemptId === attemptId || attempt?.status === 'completed') {
+      navigate('/results/detail')
+      return
+    }
+    void finishExam('/results/detail')
+  }, [attempt, attemptId, finishExam, navigate, submittedAttemptId])
 
   useEffect(() => {
     if (Capacitor.getPlatform() !== 'android') return undefined
@@ -823,7 +833,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         onFinish={finishExam}
         isFinishing={isFinishing}
         hasSubmitted={submittedAttemptId === attemptId}
-        onViewResults={() => navigate('/results/detail')}
+        onViewResults={viewExamResults}
         onExit={() => navigate('/dashboard')}
       />
     )
