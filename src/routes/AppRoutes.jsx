@@ -95,6 +95,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const [integritySeconds, setIntegritySeconds] = useState(10)
   const [integrityAction, setIntegrityAction] = useState(null)
   const [examResult, setExamResult] = useState(null)
+  const [submittedAttemptId, setSubmittedAttemptId] = useState(null)
   const [detailNilai, setDetailNilai] = useState(null)
   const [detailNilaiLoading, setDetailNilaiLoading] = useState(false)
   const [detailNilaiError, setDetailNilaiError] = useState('')
@@ -528,6 +529,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         method: 'POST',
         body: token ? { token } : {},
       })
+      setSubmittedAttemptId(null)
       setExamResult(null)
       setSelectedExam({ ...selectedExam, ...data.exam, attempt: data.attempt, question_ids: data.question_ids })
       setAttempt(data.attempt)
@@ -613,9 +615,11 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     if (!attemptId || isFinishingRef.current) return false
     isFinishingRef.current = true
     setIsFinishing(true)
+    setDataError('')
     try {
       const result = await apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} })
       setExamResult(result)
+      setSubmittedAttemptId(attemptId)
       const completedExamId = selectedExam?.id || examId
       if (completedExamId) {
         localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({ id: attemptId }))
@@ -626,16 +630,17 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         localStorage.removeItem(`cbt_exam_attempt_${completedExamId}`)
       }
       if (showTimeoutAlert) {
-        await Swal.fire({
+        const alertResult = await Swal.fire({
           icon: 'warning',
           title: 'Waktu Habis',
           text: 'Waktu ujian telah berakhir. Jawaban berhasil dikirim.',
-          timer: 3000,
-          timerProgressBar: true,
-          showConfirmButton: false,
+          confirmButtonText: 'Lihat hasil akhir',
+          cancelButtonText: 'Tetap di halaman ini',
+          showCancelButton: true,
           allowOutsideClick: false,
           allowEscapeKey: false,
         })
+        if (alertResult.isConfirmed) navigate('/results/detail')
       }
       if (redirectPath) navigate(redirectPath)
       void dashboardService.get()
@@ -654,9 +659,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     }
   }, [attemptId, examId, navigate, selectedExam])
 
-  useEffect(() => {
-    if (routeKind !== 'exam' || timerAttemptId !== attemptId || Number(timeLeft) > 0 || !attemptId || isFinishingRef.current) return
-    if (autoFinishedAttemptRef.current === attemptId) return
+  const finishTimedOutExam = useCallback(() => {
+    if (!attemptId || isFinishingRef.current || autoFinishedAttemptRef.current === attemptId) return
 
     autoFinishedAttemptRef.current = attemptId
     void finishExam(null, true).then((submitted) => {
@@ -665,7 +669,12 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         setTimeout(() => setAutoFinishRetry((retry) => retry + 1), 5000)
       }
     })
-  }, [attemptId, autoFinishRetry, finishExam, routeKind, timeLeft, timerAttemptId])
+  }, [attemptId, finishExam])
+
+  useEffect(() => {
+    if (routeKind !== 'exam' || timerAttemptId !== attemptId || Number(timeLeft) > 0 || !attemptId || isFinishingRef.current) return
+    finishTimedOutExam()
+  }, [attemptId, autoFinishRetry, finishTimedOutExam, routeKind, timeLeft, timerAttemptId])
 
   useEffect(() => {
     if (Capacitor.getPlatform() !== 'android') return undefined
@@ -766,7 +775,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         onToggleDoubtful={toggleDoubtful}
         onFinish={finishExam}
         isFinishing={isFinishing}
-        hasSubmitted={Boolean(examResult)}
+        hasSubmitted={submittedAttemptId === attemptId}
+        onRetryFinish={finishTimedOutExam}
         onViewResults={() => navigate('/results/detail')}
         onExit={() => navigate('/dashboard')}
       />
