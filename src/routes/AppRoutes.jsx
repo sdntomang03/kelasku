@@ -197,6 +197,34 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     return () => { cancelled = true }
   }, [authenticated, routeKind, examId])
 
+  const recordSubmittedAttempt = useCallback((submittedAttemptId, result) => {
+    setExamResult(result)
+    setSubmittedAttemptId(submittedAttemptId)
+    const completedExamId = selectedExam?.id || examId
+    if (completedExamId) {
+      localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({ id: submittedAttemptId }))
+      localStorage.setItem('cbt_result_detail_context', JSON.stringify({
+        examId: completedExamId,
+        attemptId: submittedAttemptId,
+      }))
+      localStorage.removeItem(`cbt_exam_attempt_${completedExamId}`)
+    }
+  }, [examId, selectedExam])
+
+  const showTimeoutResultAlert = useCallback(async () => {
+    const alertResult = await Swal.fire({
+      icon: 'warning',
+      title: 'Waktu Habis',
+      text: 'Jawaban ujian sudah berhasil dikirim.',
+      confirmButtonText: 'Lihat hasil akhir',
+      cancelButtonText: 'Tutup',
+      showCancelButton: true,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    })
+    if (alertResult.isConfirmed) navigate('/results/detail')
+  }, [navigate])
+
   useEffect(() => {
     if (routeKind !== 'exam' || !examId || !authenticated || questionIds.length) return undefined
     const stored = localStorage.getItem(`cbt_exam_attempt_${examId}`)
@@ -217,6 +245,11 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
             setAttempt(serverAttempt)
             setTimeLeft(typeof serverAttempt.remaining_seconds === 'number' ? serverAttempt.remaining_seconds : 0)
             setTimerAttemptId(serverAttempt.id)
+            if (serverAttempt.status === 'completed') {
+              recordSubmittedAttempt(serverAttempt.id, null)
+              void showTimeoutResultAlert()
+                .catch((error) => setDataError(getErrorMessage(error)))
+            }
             setViolationState((state) => ({
               ...state,
               count: serverAttempt.violation_count ?? state.count,
@@ -230,7 +263,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       localStorage.removeItem(`cbt_exam_attempt_${examId}`)
     }
     return undefined
-  }, [routeKind, examId, authenticated, questionIds.length, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setTimerAttemptId, setViolationState])
+  }, [routeKind, examId, authenticated, questionIds.length, recordSubmittedAttempt, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setTimerAttemptId, setViolationState, showTimeoutResultAlert])
 
   useEffect(() => {
     if (routeKind !== 'exam' || !attemptId || !currentQuestionId) return undefined
@@ -617,31 +650,20 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     setIsFinishing(true)
     setDataError('')
     try {
-      const result = await apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} })
-      setExamResult(result)
-      setSubmittedAttemptId(attemptId)
-      const completedExamId = selectedExam?.id || examId
-      if (completedExamId) {
-        localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({ id: attemptId }))
-        localStorage.setItem('cbt_result_detail_context', JSON.stringify({
-          examId: completedExamId,
-          attemptId,
-        }))
-        localStorage.removeItem(`cbt_exam_attempt_${completedExamId}`)
+      let result
+      try {
+        result = await apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} })
+      } catch (submitError) {
+        try {
+          const completedResult = await attemptService.result(attemptId)
+          if (completedResult.status !== 'completed') throw submitError
+          result = completedResult
+        } catch {
+          throw submitError
+        }
       }
-      if (showTimeoutAlert) {
-        const alertResult = await Swal.fire({
-          icon: 'warning',
-          title: 'Waktu Habis',
-          text: 'Waktu ujian telah berakhir. Jawaban berhasil dikirim.',
-          confirmButtonText: 'Lihat hasil akhir',
-          cancelButtonText: 'Tetap di halaman ini',
-          showCancelButton: true,
-          allowOutsideClick: false,
-          allowEscapeKey: false,
-        })
-        if (alertResult.isConfirmed) navigate('/results/detail')
-      }
+      recordSubmittedAttempt(attemptId, result)
+      if (showTimeoutAlert) await showTimeoutResultAlert()
       if (redirectPath) navigate(redirectPath)
       void dashboardService.get()
         .then(setDashboard)
@@ -657,7 +679,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       isFinishingRef.current = false
       setIsFinishing(false)
     }
-  }, [attemptId, examId, navigate, selectedExam])
+  }, [attemptId, navigate, recordSubmittedAttempt, showTimeoutResultAlert])
 
   const finishTimedOutExam = useCallback(() => {
     if (!attemptId || isFinishingRef.current || autoFinishedAttemptRef.current === attemptId) return
