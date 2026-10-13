@@ -247,8 +247,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           return () => clearTimeout(completionTimer)
         }
       } catch (error) {
-        setDataError(getErrorMessage(error))
-        return undefined
+        const errorTimer = setTimeout(() => setDataError(getErrorMessage(error)), 0)
+        return () => clearTimeout(errorTimer)
       }
     }
 
