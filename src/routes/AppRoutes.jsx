@@ -605,7 +605,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     if (autoFinishedAttemptRef.current === attemptId) return
 
     autoFinishedAttemptRef.current = attemptId
-    void finishExam('/dashboard')
+    void finishExam('/results')
   }, [attemptId, finishExam, routeKind, timeLeft])
 
   useEffect(() => {
