@@ -4,7 +4,7 @@ import ImageRichContent from "../content/ImageRichContent"
 import { answerExists, formatQuestionType } from "../../utils/question"
 import QuestionAnswer from "./QuestionAnswer"
 
-export default function ExamScreen({ exam, question, questionLoading = false, questionIds, activeQuestion, setActiveQuestion, answers, doubtful, answeredCount, timeLeft, isTimeExpired = false, questionError, fullscreenError, enableViolation, violationState, onViolation, onDismissViolation, requestFullscreen, onAnswer, onToggleDoubtful, onFinish, isFinishing, hasSubmitted = false, onRetryFinish, onViewResults, onExit }) {
+export default function ExamScreen({ exam, question, questionLoading = false, questionIds, activeQuestion, setActiveQuestion, answers, doubtful, answeredCount, timeLeft, isTimeExpired = false, questionError, fullscreenError, enableViolation, violationState, onViolation, onDismissViolation, requestFullscreen, onAnswer, onToggleDoubtful, onFinish, isFinishing, hasSubmitted = false, onViewResults, onExit }) {
   const minutes = String(Math.floor(timeLeft / 60)).padStart(2, "0")
   const seconds = String(timeLeft % 60).padStart(2, "0")
   const totalQuestions = questionIds.length
@@ -69,13 +69,7 @@ export default function ExamScreen({ exam, question, questionLoading = false, qu
 
   const fullscreenPrompt = fullscreenError && <div className="exam-fullscreen-warning" role="alert"><span>{fullscreenError}</span><button type="button" className="primary-button" onClick={requestExamFullscreen}>Aktifkan layar penuh</button></div>
   if (violationState.locked) return <><ViolationLockedScreen count={violationState.count} onExit={onExit} />{fullscreenPrompt}</>
-  if (isTimeExpired) return <div className="violation-locked-screen" role="status">{fullscreenPrompt}{!hasSubmitted && <div className="finish-saving-spinner" />}<p className="eyebrow">WAKTU UJIAN HABIS</p><h1>{hasSubmitted ? "Ujian selesai" : "Ujian sedang diselesaikan"}</h1><p>{hasSubmitted ? "Jawaban berhasil dikirim. Soal tidak dapat dikerjakan lagi." : "Jawaban sedang dikirim. Soal tidak dapat dikerjakan lagi."}</p>{questionError && <p className="api-error" role="alert">{questionError}</p>}<button
-  type="button"
-  className="primary-button"
-  onClick={onViewResults}
->
-  Lihat hasil akhir
-</button></div>
+  if (isTimeExpired) return <div className="violation-locked-screen" role="status">{fullscreenPrompt}{!hasSubmitted && <div className="finish-saving-spinner" />}<p className="eyebrow">WAKTU UJIAN HABIS</p><h1>{hasSubmitted ? "Ujian selesai" : "Ujian sedang diselesaikan"}</h1><p>{hasSubmitted ? "Jawaban berhasil dikirim. Soal tidak dapat dikerjakan lagi." : "Jawaban sedang dikirim. Soal tidak dapat dikerjakan lagi."}</p>{questionError && <p className="api-error" role="alert">{questionError}</p>}<button type="button" className="primary-button" onClick={onViewResults} disabled={!hasSubmitted}>{hasSubmitted ? "Lihat hasil akhir" : "Memastikan pengiriman..."}</button></div>
   if (!question) return <div className="loading-screen">{fullscreenPrompt}<Logo /><p>{questionError || "Memuat soal..."}</p><button className="secondary-button" onClick={onExit}>Keluar dari ujian</button></div>
 
   const answer = answers[questionId]

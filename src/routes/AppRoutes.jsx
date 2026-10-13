@@ -211,7 +211,10 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     }
   }, [examId, selectedExam])
 
-  const showTimeoutResultAlert = useCallback(async () => {
+  const showTimeoutResultAlert = useCallback(async (submittedAttemptId) => {
+    const alertKey = `cbt_timeout_alert_seen_${submittedAttemptId}`
+    if (localStorage.getItem(alertKey) === '1') return
+
     const alertResult = await Swal.fire({
       icon: 'warning',
       title: 'Waktu Habis',
@@ -222,11 +225,33 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       allowOutsideClick: false,
       allowEscapeKey: false,
     })
+    localStorage.setItem(alertKey, '1')
     if (alertResult.isConfirmed) navigate('/results/detail')
   }, [navigate])
 
   useEffect(() => {
     if (routeKind !== 'exam' || !examId || !authenticated || questionIds.length) return undefined
+    const completedAttempt = localStorage.getItem(`cbt_completed_attempt_${examId}`)
+    if (completedAttempt) {
+      try {
+        const completedAttemptId = JSON.parse(completedAttempt)?.id
+        if (completedAttemptId) {
+          const completionTimer = setTimeout(() => {
+            recordSubmittedAttempt(completedAttemptId, null)
+            setAttempt({ id: completedAttemptId, status: 'completed', remaining_seconds: 0 })
+            setTimeLeft(0)
+            setTimerAttemptId(completedAttemptId)
+            void showTimeoutResultAlert(completedAttemptId)
+              .catch((error) => setDataError(getErrorMessage(error)))
+          }, 0)
+          return () => clearTimeout(completionTimer)
+        }
+      } catch (error) {
+        setDataError(getErrorMessage(error))
+        return undefined
+      }
+    }
+
     const stored = localStorage.getItem(`cbt_exam_attempt_${examId}`)
     if (!stored) return undefined
     try {
@@ -247,7 +272,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
             setTimerAttemptId(serverAttempt.id)
             if (serverAttempt.status === 'completed') {
               recordSubmittedAttempt(serverAttempt.id, null)
-              void showTimeoutResultAlert()
+              void showTimeoutResultAlert(serverAttempt.id)
                 .catch((error) => setDataError(getErrorMessage(error)))
             }
             setViolationState((state) => ({
@@ -263,7 +288,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       localStorage.removeItem(`cbt_exam_attempt_${examId}`)
     }
     return undefined
-  }, [routeKind, examId, authenticated, questionIds.length, recordSubmittedAttempt, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setTimerAttemptId, setViolationState, showTimeoutResultAlert])
+  }, [routeKind, examId, authenticated, questionIds.length, recordSubmittedAttempt, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setTimeLeft, setTimerAttemptId, setViolationState, showTimeoutResultAlert])
 
   useEffect(() => {
     if (routeKind !== 'exam' || !attemptId || !currentQuestionId) return undefined
@@ -291,7 +316,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [routeKind, attemptId, currentQuestionId, examConfig, questions, setAnswers, setDataError, setDoubtful, setQuestions, setTimeLeft, setTimerAttemptId])
 
   useEffect(() => {
-    if (!attemptStorageKey || !attempt?.id || !questionIds.length) return
+    if (!attemptStorageKey || !attempt?.id || !questionIds.length || attempt.status === 'completed') return
     localStorage.setItem(attemptStorageKey, JSON.stringify({
       attempt,
       questionIds,
@@ -663,7 +688,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         }
       }
       recordSubmittedAttempt(attemptId, result)
-      if (showTimeoutAlert) await showTimeoutResultAlert()
+      if (showTimeoutAlert) await showTimeoutResultAlert(attemptId)
       if (redirectPath) navigate(redirectPath)
       void dashboardService.get()
         .then(setDashboard)
@@ -798,7 +823,6 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         onFinish={finishExam}
         isFinishing={isFinishing}
         hasSubmitted={submittedAttemptId === attemptId}
-        onRetryFinish={finishTimedOutExam}
         onViewResults={() => navigate('/results/detail')}
         onExit={() => navigate('/dashboard')}
       />
