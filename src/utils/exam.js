@@ -2,6 +2,24 @@ export function isExamCompleted(exam) {
   return String(exam?.status || '').toLowerCase() === 'completed'
 }
 
+export function getExamQuestionCount(exam) {
+  const count = [
+    exam?.total_questions,
+    exam?.question_count,
+    exam?.questions_count,
+    exam?.question_ids?.length,
+    exam?.questionIds?.length,
+    exam?.questions?.length,
+  ].find((value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0)
+  if (count !== undefined) return Number(count)
+
+  const sectionCounts = (exam?.sections || []).map((section) => section.question_count ?? section.total_questions)
+  if (sectionCounts.length && sectionCounts.every((value) => Number.isFinite(Number(value)))) {
+    return sectionCounts.reduce((total, value) => total + Number(value), 0)
+  }
+  return null
+}
+
 export function isExamOngoing(exam) {
   return ['ongoing', 'in_progress', 'active'].includes(exam?.status)
 }

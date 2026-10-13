@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Icon from '../components/common/Icon'
 import { formatDate } from '../utils/date'
-import { isExamCompleted, isExamOngoing } from '../utils/exam'
+import { getExamQuestionCount, isExamCompleted, isExamOngoing } from '../utils/exam'
 
 
 export default function DashboardPage({ onExam, onPage, exams, completed, student, dashboard }) {
@@ -44,9 +44,9 @@ function StatCard({ label, value, detail, icon, tone }) {
 }
 
 function ExamRow({ exam, onClick }) {
-  return <button className="exam-row" onClick={onClick}><div className={`subject-icon ${exam.color}`}><Icon name="clipboard" size={20} /></div><div className="row-main"><strong>{exam.title}</strong><span><span className="date-dot" />{formatDate(exam.start_time)} <i /> {exam.duration_minutes} menit <i /> {exam.total_questions} soal</span></div><span className={`status-pill ${isExamCompleted(exam) ? 'completed' : exam.status}`}>{isExamCompleted(exam) ? 'Selesai' : isExamOngoing(exam) ? 'Sedang dikerjakan' : 'Belum dimulai'}</span><Icon name="arrow" size={17} /></button>
+  return <button className="exam-row" onClick={onClick}><div className={`subject-icon ${exam.color}`}><Icon name="clipboard" size={20} /></div><div className="row-main"><strong>{exam.title}</strong><span><span className="date-dot" />{formatDate(exam.start_time)} <i /> {exam.duration_minutes} menit <i /> {getExamQuestionCount(exam) ?? '—'} soal</span></div><span className={`status-pill ${isExamCompleted(exam) ? 'completed' : exam.status}`}>{isExamCompleted(exam) ? 'Selesai' : isExamOngoing(exam) ? 'Sedang dikerjakan' : 'Belum dimulai'}</span><Icon name="arrow" size={17} /></button>
 }
 
 function ResultRow({ exam }) {
-  return <div className="result-row"><div className={`subject-icon ${exam.color}`}><Icon name="chart" size={20} /></div><div className="row-main"><strong>{exam.title}</strong><span>{formatDate(exam.end_time)} <i /> {exam.total_questions} soal</span></div><div className="score"><strong>{exam.final_score}</strong><span>/ 100</span></div><span className="score-label">Sangat baik</span></div>
+  return <div className="result-row"><div className={`subject-icon ${exam.color}`}><Icon name="chart" size={20} /></div><div className="row-main"><strong>{exam.title}</strong><span>{formatDate(exam.end_time)} <i /> {getExamQuestionCount(exam) ?? '—'} soal</span></div><div className="score"><strong>{exam.final_score}</strong><span>/ 100</span></div><span className="score-label">Sangat baik</span></div>
 }

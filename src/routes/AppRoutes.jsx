@@ -11,7 +11,7 @@ import { examService } from '../services/examService'
 import { getErrorMessage } from '../utils/api'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
 import { randomizeQuestion, shuffle } from '../utils/question'
-import { examRequiresToken, getClassName, getSchoolName, isExamCompleted, isExamLocked } from '../utils/exam'
+import { examRequiresToken, getClassName, getExamQuestionCount, getSchoolName, isExamCompleted, isExamLocked } from '../utils/exam'
 import { useExamAttempt } from '../hooks/useExamAttempt'
 import { useExamAutosave } from '../hooks/useExamAutosave'
 import { useExamTimer } from '../hooks/useExamTimer'
@@ -169,11 +169,18 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         setStudent(profile)
         setDashboard(dashboardData)
         const latestExams = Array.isArray(examData) ? examData : []
-        setExams(latestExams)
+        setExams(latestExams.map((exam) => ({
+          ...exam,
+          total_questions: getExamQuestionCount(exam) ?? getCachedQuestionCount(exam.id) ?? exam.total_questions,
+        })))
         setSelectedExam((current) => {
           if (!current) return current
           const latest = latestExams.find((exam) => String(exam.id) === String(current.id))
-          return latest ? { ...current, ...latest } : current
+          return latest ? {
+            ...current,
+            ...latest,
+            total_questions: getExamQuestionCount(latest) ?? getCachedQuestionCount(latest.id) ?? getExamQuestionCount(current),
+          } : current
         })
         setDataError('')
       })
@@ -199,21 +206,25 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     setExamResult(result)
     setSubmittedAttemptId(submittedAttemptId)
     const completedExamId = selectedExam?.id || examId
+    const questionCount = getExamQuestionCount({ ...selectedExam, question_ids: questionIds })
     if (completedExamId) {
-      localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({ id: submittedAttemptId }))
+      localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({
+        id: submittedAttemptId,
+        questionCount,
+      }))
       localStorage.setItem('cbt_result_detail_context', JSON.stringify({
         examId: completedExamId,
         attemptId: submittedAttemptId,
       }))
       localStorage.removeItem(`cbt_exam_attempt_${completedExamId}`)
       setSelectedExam((current) => current && String(current.id) === String(completedExamId)
-        ? { ...current, status: 'completed', attempt: { id: submittedAttemptId, status: 'completed' } }
+        ? { ...current, total_questions: getExamQuestionCount(current) ?? questionCount, status: 'completed', attempt: { id: submittedAttemptId, status: 'completed' } }
         : current)
       setExams((current) => current.map((exam) => String(exam.id) === String(completedExamId)
-        ? { ...exam, status: 'completed', attempt: { id: submittedAttemptId, status: 'completed' } }
+        ? { ...exam, total_questions: getExamQuestionCount(exam) ?? questionCount, status: 'completed', attempt: { id: submittedAttemptId, status: 'completed' } }
         : exam))
     }
-  }, [examId, selectedExam])
+  }, [examId, questionIds, selectedExam])
 
   useEffect(() => {
     if (routeKind !== 'exam' || !examId || !authenticated || questionIds.length) return undefined
@@ -316,7 +327,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     if (!examId || !authenticated) return undefined
     let cancelled = false
     examService.detail(examId)
-      .then((data) => { if (!cancelled) setSelectedExam(data) })
+      .then((data) => {
+        if (cancelled) return
+        setSelectedExam((current) => ({
+          ...current,
+          ...data,
+          total_questions: getExamQuestionCount(data) ?? getCachedQuestionCount(data.id) ?? getExamQuestionCount(current),
+        }))
+      })
       .catch((error) => { if (!cancelled) setDataError(getErrorMessage(error)) })
     return () => { cancelled = true }
   }, [examId, authenticated])
@@ -575,7 +593,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       setExamResult(null)
       autoFinishedAttemptRef.current = null
       localStorage.removeItem(`cbt_completed_attempt_${selectedExam.id}`)
-      setSelectedExam({ ...selectedExam, ...data.exam, attempt: data.attempt, question_ids: data.question_ids })
+      setSelectedExam({
+        ...selectedExam,
+        ...data.exam,
+        total_questions: getExamQuestionCount({ ...data.exam, question_ids: data.question_ids })
+          ?? getExamQuestionCount(selectedExam),
+        attempt: data.attempt,
+        question_ids: data.question_ids,
+      })
       setAttempt(data.attempt)
       setExamConfig(data.config || { random_question: false, random_answer: false })
       setViolationState({
@@ -679,7 +704,10 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         .then(setDashboard)
         .catch((error) => setDataError(getErrorMessage(error)))
       void examService.list()
-        .then((examData) => setExams(Array.isArray(examData) ? examData : []))
+        .then((examData) => setExams(Array.isArray(examData) ? examData.map((exam) => ({
+          ...exam,
+          total_questions: getExamQuestionCount(exam) ?? getCachedQuestionCount(exam.id) ?? exam.total_questions,
+        })) : []))
         .catch((error) => setDataError(getErrorMessage(error)))
       return true
     } catch (error) {
@@ -901,4 +929,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
 
 function NavItem({ icon, label, active, badge, onClick }) {
   return <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}><Icon name={icon} /><span>{label}</span>{badge && <em>{badge}</em>}</button>
+}
+
+function getCachedQuestionCount(examId) {
+  try {
+    const stored = localStorage.getItem(`cbt_completed_attempt_${examId}`)
+    const count = stored ? JSON.parse(stored)?.questionCount : null
+    return Number.isFinite(Number(count)) && count !== null && count !== '' ? Number(count) : null
+  } catch {
+    return null
+  }
 }
