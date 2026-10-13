@@ -69,7 +69,13 @@ export default function ExamScreen({ exam, question, questionLoading = false, qu
 
   const fullscreenPrompt = fullscreenError && <div className="exam-fullscreen-warning" role="alert"><span>{fullscreenError}</span><button type="button" className="primary-button" onClick={requestExamFullscreen}>Aktifkan layar penuh</button></div>
   if (violationState.locked) return <><ViolationLockedScreen count={violationState.count} onExit={onExit} />{fullscreenPrompt}</>
-  if (isTimeExpired) return <div className="violation-locked-screen" role="status">{fullscreenPrompt}{!hasSubmitted && <div className="finish-saving-spinner" />}<p className="eyebrow">WAKTU UJIAN HABIS</p><h1>{hasSubmitted ? "Ujian selesai" : "Ujian sedang diselesaikan"}</h1><p>{hasSubmitted ? "Jawaban berhasil dikirim. Soal tidak dapat dikerjakan lagi." : "Jawaban sedang dikirim. Soal tidak dapat dikerjakan lagi."}</p>{questionError && <p className="api-error" role="alert">{questionError}</p>}<button type="button" className="primary-button" onClick={hasSubmitted ? onViewResults : onRetryFinish} disabled={!hasSubmitted && isFinishing}>{hasSubmitted ? "Lihat hasil akhir" : isFinishing ? "Mengirim jawaban..." : "Coba kirim jawaban lagi"}</button></div>
+  if (isTimeExpired) return <div className="violation-locked-screen" role="status">{fullscreenPrompt}{!hasSubmitted && <div className="finish-saving-spinner" />}<p className="eyebrow">WAKTU UJIAN HABIS</p><h1>{hasSubmitted ? "Ujian selesai" : "Ujian sedang diselesaikan"}</h1><p>{hasSubmitted ? "Jawaban berhasil dikirim. Soal tidak dapat dikerjakan lagi." : "Jawaban sedang dikirim. Soal tidak dapat dikerjakan lagi."}</p>{questionError && <p className="api-error" role="alert">{questionError}</p>}<button
+  type="button"
+  className="primary-button"
+  onClick={onViewResults}
+>
+  Lihat hasil akhir
+</button></div>
   if (!question) return <div className="loading-screen">{fullscreenPrompt}<Logo /><p>{questionError || "Memuat soal..."}</p><button className="secondary-button" onClick={onExit}>Keluar dari ujian</button></div>
 
   const answer = answers[questionId]
