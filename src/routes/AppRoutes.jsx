@@ -2,6 +2,8 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App as CapacitorApp } from '@capacitor/app'
+import Swal from 'sweetalert2'
+import 'sweetalert2/dist/sweetalert2.min.css'
 import { apiRequest } from '../api/client'
 import Icon from '../components/common/Icon'
 import IntegrityModal from '../components/common/IntegrityModal'
@@ -103,9 +105,11 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
   const isFinishingRef = useRef(false)
+  const isStartingAttemptRef = useRef(false)
   const autoFinishedAttemptRef = useRef(null)
   const [autoFinishRetry, setAutoFinishRetry] = useState(0)
   const [timeLeft, setTimeLeft] = useState(76 * 60 + 24)
+  const [timerAttemptId, setTimerAttemptId] = useState(null)
 
   useEffect(() => {
     if (!integrityOpen) return undefined
@@ -138,8 +142,15 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const attemptStorageKey = examId ? `cbt_exam_attempt_${examId}` : ''
   const completed = useMemo(() => exams.filter(isExamCompleted), [exams])
   const answeredCount = Object.keys(answers).length
+  const isTimeExpired = routeKind === 'exam'
+    && timerAttemptId === attemptId
+    && Number(timeLeft) <= 0
 
-  useExamTimer({ timeLeft, setTimeLeft, enabled: routeKind === 'exam' })
+  useExamTimer({
+    timeLeft,
+    setTimeLeft,
+    enabled: routeKind === 'exam' && timerAttemptId === attemptId && Boolean(currentQuestion),
+  })
 
   useEffect(() => {
     function closeProfileMenu(event) {
@@ -203,6 +214,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           .then((serverAttempt) => {
             setAttempt(serverAttempt)
             setTimeLeft(typeof serverAttempt.remaining_seconds === 'number' ? serverAttempt.remaining_seconds : 0)
+            setTimerAttemptId(serverAttempt.id)
             setViolationState((state) => ({
               ...state,
               count: serverAttempt.violation_count ?? state.count,
@@ -216,7 +228,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       localStorage.removeItem(`cbt_exam_attempt_${examId}`)
     }
     return undefined
-  }, [routeKind, examId, authenticated, questionIds.length, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setViolationState])
+  }, [routeKind, examId, authenticated, questionIds.length, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setTimerAttemptId, setViolationState])
 
   useEffect(() => {
     if (routeKind !== 'exam' || !attemptId || !currentQuestionId) return undefined
@@ -234,11 +246,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           setAnswers((items) => ({ ...items, [currentQuestionId]: savedAnswer }))
         }
         setDoubtful((items) => data.is_doubtful && !items.includes(currentQuestionId) ? [...items, currentQuestionId] : items.filter((id) => id !== currentQuestionId || data.is_doubtful))
-        if (typeof data.remaining_seconds === 'number') setTimeLeft(data.remaining_seconds)
+        if (typeof data.remaining_seconds === 'number') {
+          setTimeLeft((remaining) => Math.min(Number(remaining), data.remaining_seconds))
+          setTimerAttemptId(attemptId)
+        }
       })
       .catch((error) => { if (!cancelled) setDataError(getErrorMessage(error)) })
     return () => { cancelled = true }
-  }, [routeKind, attemptId, currentQuestionId, examConfig, questions, setAnswers, setDataError, setDoubtful, setQuestions, setTimeLeft])
+  }, [routeKind, attemptId, currentQuestionId, examConfig, questions, setAnswers, setDataError, setDoubtful, setQuestions, setTimeLeft, setTimerAttemptId])
 
   useEffect(() => {
     if (!attemptStorageKey || !attempt?.id || !questionIds.length) return
@@ -481,12 +496,21 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       return
     }
     setTokenError('')
+    setTimerAttemptId(null)
+    setIntegritySeconds(10)
+    setIntegrityAction({ mode: 'attempt', token: token.trim() })
+    setIntegrityOpen(true)
+  }, [navigate, selectedExam, setTimerAttemptId])
+
+  const confirmIntegrity = useCallback(async () => {
+    if (integritySeconds > 0 || !integrityAction || !selectedExam || isStartingAttemptRef.current) return
+    isStartingAttemptRef.current = true
     setIsTokenLoading(true)
-    let hasExistingAnswers
     try {
+      const token = integrityAction.token || ''
       const data = await apiRequest(`/exams/${selectedExam.id}/start`, {
         method: 'POST',
-        body: token.trim() ? { token: token.trim() } : {},
+        body: token ? { token } : {},
       })
       setSelectedExam({ ...selectedExam, ...data.exam, attempt: data.attempt, question_ids: data.question_ids })
       setAttempt(data.attempt)
@@ -501,9 +525,9 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       setQuestionIds(questionOrder)
       setQuestions({})
       setAnswers(data.existing_answers || {})
-      hasExistingAnswers = Object.keys(data.existing_answers || {}).length > 0
       setDoubtful(data.flags || [])
       if (typeof data.attempt?.remaining_seconds === 'number') setTimeLeft(data.attempt.remaining_seconds)
+      setTimerAttemptId(data.attempt?.id)
       localStorage.setItem(`cbt_exam_attempt_${selectedExam.id}`, JSON.stringify({
         attempt: data.attempt,
         questionIds: questionOrder,
@@ -518,33 +542,23 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           warning: false,
         },
       }))
+      setIntegrityOpen(false)
+      setIntegrityAction(null)
+      setActiveQuestion(0)
+      navigate(`/exams/${selectedExam.id}/attempt`)
     } catch (error) {
-      if (token.trim() || examRequiresToken(selectedExam)) setTokenError(getErrorMessage(error))
+      setIntegrityOpen(false)
+      setIntegrityAction(null)
+      if (integrityAction.token || examRequiresToken(selectedExam)) setTokenError(getErrorMessage(error))
       else setDataError(getErrorMessage(error))
-      return
     } finally {
+      isStartingAttemptRef.current = false
       setIsTokenLoading(false)
     }
-    if (!hasExistingAnswers) {
-      setIntegritySeconds(10)
-      setIntegrityAction({ mode: 'attempt' })
-      setIntegrityOpen(true)
-      return
-    }
-    setActiveQuestion(0)
-    navigate(`/exams/${selectedExam.id}/attempt`)
-  }, [navigate, selectedExam, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setQuestions, setTimeLeft, setViolationState])
-
-  const confirmIntegrity = useCallback(() => {
-    if (integritySeconds > 0 || !integrityAction) return
-    setIntegrityOpen(false)
-    setIntegrityAction(null)
-    setActiveQuestion(0)
-    navigate(`/exams/${selectedExam.id}/attempt`)
-  }, [integrityAction, integritySeconds, navigate, selectedExam, setActiveQuestion])
+  }, [integrityAction, integritySeconds, navigate, selectedExam, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setQuestions, setTimeLeft, setTimerAttemptId, setViolationState])
 
   const saveAnswer = useCallback(async (questionId, answer, isDoubtful = doubtful.includes(questionId)) => {
-    if (!attemptId) return
+    if (!attemptId || (timerAttemptId === attemptId && Number(timeLeft) <= 0)) return
     setAnswers((items) => ({ ...items, [questionId]: answer }))
     try {
       const data = await saveAnswerRequest(questionId, answer, isDoubtful)
@@ -552,13 +566,14 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     } catch (error) {
       setDataError(getErrorMessage(error))
     }
-  }, [attemptId, doubtful, saveAnswerRequest, setAnswers, setDoubtful])
+  }, [attemptId, doubtful, saveAnswerRequest, setAnswers, setDoubtful, timeLeft, timerAttemptId])
 
   const toggleDoubtful = useCallback(async (questionId) => {
+    if (timerAttemptId === attemptId && Number(timeLeft) <= 0) return
     const nextValue = !doubtful.includes(questionId)
     setDoubtful((items) => nextValue ? [...items, questionId] : items.filter((id) => id !== questionId))
     if (answers[questionId] !== undefined) await saveAnswer(questionId, answers[questionId], nextValue)
-  }, [answers, doubtful, saveAnswer, setDoubtful])
+  }, [answers, attemptId, doubtful, saveAnswer, setDoubtful, timeLeft, timerAttemptId])
 
   const reportViolation = useCallback(async () => {
     if (!examConfig.enable_violation || !attemptId || violationState.locked) return
@@ -577,7 +592,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     setViolationState((state) => ({ ...state, warning: false }))
   }, [])
 
-  const finishExam = useCallback(async (redirectPath = '/results') => {
+  const finishExam = useCallback(async (redirectPath = '/results', showTimeoutAlert = false) => {
     if (!attemptId || isFinishingRef.current) return false
     isFinishingRef.current = true
     setIsFinishing(true)
@@ -588,6 +603,18 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       if (completedExamId) {
         localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({ id: attemptId }))
         localStorage.removeItem(`cbt_exam_attempt_${completedExamId}`)
+      }
+      if (showTimeoutAlert) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Waktu Habis',
+          text: 'Waktu ujian telah berakhir. Jawaban Anda sedang diproses.',
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        })
       }
       navigate(redirectPath)
       void dashboardService.get()
@@ -607,17 +634,17 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [attemptId, examId, navigate, selectedExam])
 
   useEffect(() => {
-    if (routeKind !== 'exam' || timeLeft > 0 || !attemptId || isFinishingRef.current) return
+    if (routeKind !== 'exam' || timerAttemptId !== attemptId || Number(timeLeft) > 0 || !attemptId || isFinishingRef.current) return
     if (autoFinishedAttemptRef.current === attemptId) return
 
     autoFinishedAttemptRef.current = attemptId
-    void finishExam('/results').then((submitted) => {
+    void finishExam('/results', true).then((submitted) => {
       if (!submitted && autoFinishedAttemptRef.current === attemptId) {
         autoFinishedAttemptRef.current = null
         setTimeout(() => setAutoFinishRetry((retry) => retry + 1), 5000)
       }
     })
-  }, [attemptId, autoFinishRetry, finishExam, routeKind, timeLeft])
+  }, [attemptId, autoFinishRetry, finishExam, routeKind, timeLeft, timerAttemptId])
 
   useEffect(() => {
     if (Capacitor.getPlatform() !== 'android') return undefined
@@ -706,6 +733,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         doubtful={doubtful}
         answeredCount={answeredCount}
         timeLeft={timeLeft}
+        isTimeExpired={isTimeExpired}
         questionError={dataError}
         enableViolation={Boolean(examConfig.enable_violation)}
         violationState={violationState}
@@ -780,7 +808,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       <main className="main-content">
         <header className="topbar"><button className="mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Buka menu"><span /><span /><span /></button><div className="mobile-logo"><Logo /></div><div className="breadcrumb"><span>Portal Siswa</span><b>/</b><strong>{page.startsWith('practice') ? 'Latihan' : page.startsWith('learn') ? 'Belajar' : page === 'dashboard' ? 'Ringkasan' : page === 'exams' ? 'Ujian saya' : page === 'results' ? 'Hasil ujian' : 'Profil saya'}</strong></div><div className="topbar-actions"><button className="icon-button notification"><Icon name="bell" /><i /></button><div className="profile-menu-wrap" ref={profileMenuRef}><button className="top-profile" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen}><div className="avatar">{student?.name?.slice(0, 2).toUpperCase()}</div><div><strong>{student?.name}</strong><span>Siswa</span></div><Icon name="chevronDown" size={15} /></button>{profileOpen && <div className="profile-dropdown"><div className="profile-dropdown-header"><span className="profile-dropdown-label">AKUN SISWA</span><strong>{student?.name}</strong></div><button onClick={() => { setProfileOpen(false); navigate('/profile') }}><Icon name="user" size={16} /><span>Profil saya</span></button><button className="profile-logout" onClick={() => { setProfileOpen(false); localStorage.removeItem('cbt_token'); setAuthenticated(false); navigate('/login') }}><Icon name="logout" size={16} /><span>Keluar</span></button></div>}</div></div></header>
         {dataError && <div className="api-error">{dataError}</div>}
-        {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} />}
+        {integrityOpen && page !== 'exam-token' && <IntegrityModal seconds={integritySeconds} onConfirm={confirmIntegrity} loading={isTokenLoading} />}
         <div className="content-wrap">
           {isAndroidLearningPage && !canUseLocalPractice && <div className="platform-notice" role="status"><span><Icon name="book" size={23} /></span><h1>Fitur tersedia di Android</h1><p>Menu Belajar dan Latihan menggunakan database lokal dan saat ini hanya tersedia melalui aplikasi Android.</p><button className="secondary-button" onClick={() => navigate('/dashboard')}>Kembali ke ringkasan</button></div>}
           {page === 'dashboard' && <DashboardPage onExam={openExam} onPage={(target) => navigate(target === 'exams' ? '/exams' : '/results')} exams={exams} completed={completed} student={student} dashboard={dashboard} />}
