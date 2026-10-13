@@ -528,6 +528,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         method: 'POST',
         body: token ? { token } : {},
       })
+      setExamResult(null)
       setSelectedExam({ ...selectedExam, ...data.exam, attempt: data.attempt, question_ids: data.question_ids })
       setAttempt(data.attempt)
       setExamConfig(data.config || { random_question: false, random_answer: false })
@@ -618,13 +619,17 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       const completedExamId = selectedExam?.id || examId
       if (completedExamId) {
         localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({ id: attemptId }))
+        localStorage.setItem('cbt_result_detail_context', JSON.stringify({
+          examId: completedExamId,
+          attemptId,
+        }))
         localStorage.removeItem(`cbt_exam_attempt_${completedExamId}`)
       }
       if (showTimeoutAlert) {
         await Swal.fire({
           icon: 'warning',
           title: 'Waktu Habis',
-          text: 'Waktu ujian telah berakhir. Jawaban Anda sedang diproses.',
+          text: 'Waktu ujian telah berakhir. Jawaban berhasil dikirim.',
           timer: 3000,
           timerProgressBar: true,
           showConfirmButton: false,
@@ -632,7 +637,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
           allowEscapeKey: false,
         })
       }
-      navigate(redirectPath)
+      if (redirectPath) navigate(redirectPath)
       void dashboardService.get()
         .then(setDashboard)
         .catch((error) => setDataError(getErrorMessage(error)))
@@ -654,7 +659,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     if (autoFinishedAttemptRef.current === attemptId) return
 
     autoFinishedAttemptRef.current = attemptId
-    void finishExam('/results', true).then((submitted) => {
+    void finishExam(null, true).then((submitted) => {
       if (!submitted && autoFinishedAttemptRef.current === attemptId) {
         autoFinishedAttemptRef.current = null
         setTimeout(() => setAutoFinishRetry((retry) => retry + 1), 5000)
@@ -761,6 +766,8 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         onToggleDoubtful={toggleDoubtful}
         onFinish={finishExam}
         isFinishing={isFinishing}
+        hasSubmitted={Boolean(examResult)}
+        onViewResults={() => navigate('/results/detail')}
         onExit={() => navigate('/dashboard')}
       />
     )
