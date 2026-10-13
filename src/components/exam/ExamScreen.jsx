@@ -4,7 +4,7 @@ import ImageRichContent from "../content/ImageRichContent"
 import { answerExists, formatQuestionType } from "../../utils/question"
 import QuestionAnswer from "./QuestionAnswer"
 
-export default function ExamScreen({ exam, question, questionLoading = false, questionIds, activeQuestion, setActiveQuestion, answers, doubtful, answeredCount, timeLeft, isTimeExpired = false, questionError, enableViolation, violationState, onViolation, onDismissViolation, onAnswer, onToggleDoubtful, onFinish, isFinishing, onExit }) {
+export default function ExamScreen({ exam, question, questionLoading = false, questionIds, activeQuestion, setActiveQuestion, answers, doubtful, answeredCount, timeLeft, isTimeExpired = false, questionError, enableViolation, violationState, onViolation, onDismissViolation, requestFullscreen, onAnswer, onToggleDoubtful, onFinish, isFinishing, onExit }) {
   const minutes = String(Math.floor(timeLeft / 60)).padStart(2, "0")
   const seconds = String(timeLeft % 60).padStart(2, "0")
   const totalQuestions = questionIds.length
@@ -17,10 +17,17 @@ export default function ExamScreen({ exam, question, questionLoading = false, qu
   const [finishConfirmationStep, setFinishConfirmationStep] = useState(1)
 
   const requestExamFullscreen = useCallback(() => {
-    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {})
+    requestFullscreen?.()
+  }, [requestFullscreen])
+
+  useEffect(() => {
+    const enforceFullscreen = () => {
+      if (!document.fullscreenElement) requestExamFullscreen()
     }
-  }, [])
+    requestExamFullscreen()
+    document.addEventListener("fullscreenchange", enforceFullscreen)
+    return () => document.removeEventListener("fullscreenchange", enforceFullscreen)
+  }, [requestExamFullscreen])
 
   useEffect(() => {
     if (!enableViolation || violationState.locked) return undefined
@@ -42,13 +49,12 @@ export default function ExamScreen({ exam, question, questionLoading = false, qu
     document.addEventListener("visibilitychange", onVisibilityChange)
     window.addEventListener("blur", onBlur)
     document.addEventListener("fullscreenchange", onFullscreenChange)
-    requestExamFullscreen()
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange)
       window.removeEventListener("blur", onBlur)
       document.removeEventListener("fullscreenchange", onFullscreenChange)
     }
-  }, [enableViolation, violationState.locked, violationBusy, onViolation, requestExamFullscreen])
+  }, [enableViolation, violationState.locked, violationBusy, onViolation])
 
   useEffect(() => {
     const preventContextMenu = (event) => event.preventDefault()

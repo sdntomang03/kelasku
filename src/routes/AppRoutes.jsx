@@ -502,8 +502,20 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     setIntegrityOpen(true)
   }, [navigate, selectedExam, setTimerAttemptId])
 
+  const requestExamFullscreen = useCallback(() => {
+    if (document.fullscreenElement) return
+    if (!document.documentElement.requestFullscreen) {
+      setDataError('Perangkat atau browser ini tidak mendukung mode layar penuh untuk ujian.')
+      return
+    }
+    document.documentElement.requestFullscreen().catch(() => {
+      setDataError('Mode layar penuh tidak dapat diaktifkan. Izinkan layar penuh untuk melanjutkan ujian.')
+    })
+  }, [])
+
   const confirmIntegrity = useCallback(async () => {
     if (integritySeconds > 0 || !integrityAction || !selectedExam || isStartingAttemptRef.current) return
+    requestExamFullscreen()
     isStartingAttemptRef.current = true
     setIsTokenLoading(true)
     try {
@@ -555,7 +567,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       isStartingAttemptRef.current = false
       setIsTokenLoading(false)
     }
-  }, [integrityAction, integritySeconds, navigate, selectedExam, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setQuestions, setTimeLeft, setTimerAttemptId, setViolationState])
+  }, [integrityAction, integritySeconds, navigate, requestExamFullscreen, selectedExam, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setQuestions, setTimeLeft, setTimerAttemptId, setViolationState])
 
   const saveAnswer = useCallback(async (questionId, answer, isDoubtful = doubtful.includes(questionId)) => {
     if (!attemptId || (timerAttemptId === attemptId && Number(timeLeft) <= 0)) return
@@ -734,6 +746,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         answeredCount={answeredCount}
         timeLeft={timeLeft}
         isTimeExpired={isTimeExpired}
+        requestFullscreen={requestExamFullscreen}
         questionError={dataError}
         enableViolation={Boolean(examConfig.enable_violation)}
         violationState={violationState}
