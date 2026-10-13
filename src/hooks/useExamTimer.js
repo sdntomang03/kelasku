@@ -10,11 +10,14 @@ export function useExamTimer(timeLeftOrConfig, setTimeLeft, enabled = true) {
     if (!isEnabled) return undefined
     const timer = setInterval(() => {
       if (typeof updateTimeLeft === 'function') {
-        updateTimeLeft((seconds) => Math.max(0, Number(seconds) - 1))
+        updateTimeLeft((seconds) => {
+          const remaining = Number(seconds)
+          return Number.isFinite(remaining) ? Math.max(0, remaining - 1) : 0
+        })
       }
     }, 1000)
     return () => clearInterval(timer)
-  }, [isEnabled, updateTimeLeft, timeLeft])
+  }, [isEnabled, updateTimeLeft])
 
   return timeLeft
 }

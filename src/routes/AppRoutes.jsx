@@ -104,6 +104,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const profileMenuRef = useRef(null)
   const isFinishingRef = useRef(false)
   const autoFinishedAttemptRef = useRef(null)
+  const [autoFinishRetry, setAutoFinishRetry] = useState(0)
   const [timeLeft, setTimeLeft] = useState(76 * 60 + 24)
 
   useEffect(() => {
@@ -577,36 +578,46 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [])
 
   const finishExam = useCallback(async (redirectPath = '/results') => {
-    if (!selectedExam || !attemptId || isFinishingRef.current) return
+    if (!attemptId || isFinishingRef.current) return false
     isFinishingRef.current = true
     setIsFinishing(true)
     try {
-      const [result] = await Promise.all([
-        apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} }),
-        new Promise((resolve) => setTimeout(resolve, 3000)),
-      ])
+      const result = await apiRequest(`/attempts/${attemptId}/submit`, { method: 'POST', body: {} })
       setExamResult(result)
-      localStorage.setItem(`cbt_completed_attempt_${selectedExam.id}`, JSON.stringify({ id: attemptId }))
-      const [dashboardData, examData] = await Promise.all([dashboardService.get(), examService.list()])
-      setDashboard(dashboardData)
-      setExams(Array.isArray(examData) ? examData : [])
-      localStorage.removeItem(`cbt_exam_attempt_${selectedExam.id}`)
+      const completedExamId = selectedExam?.id || examId
+      if (completedExamId) {
+        localStorage.setItem(`cbt_completed_attempt_${completedExamId}`, JSON.stringify({ id: attemptId }))
+        localStorage.removeItem(`cbt_exam_attempt_${completedExamId}`)
+      }
       navigate(redirectPath)
+      void dashboardService.get()
+        .then(setDashboard)
+        .catch((error) => setDataError(getErrorMessage(error)))
+      void examService.list()
+        .then((examData) => setExams(Array.isArray(examData) ? examData : []))
+        .catch((error) => setDataError(getErrorMessage(error)))
+      return true
     } catch (error) {
       setDataError(getErrorMessage(error))
+      return false
     } finally {
       isFinishingRef.current = false
       setIsFinishing(false)
     }
-  }, [attemptId, navigate, selectedExam])
+  }, [attemptId, examId, navigate, selectedExam])
 
   useEffect(() => {
     if (routeKind !== 'exam' || timeLeft > 0 || !attemptId || isFinishingRef.current) return
     if (autoFinishedAttemptRef.current === attemptId) return
 
     autoFinishedAttemptRef.current = attemptId
-    void finishExam('/results')
-  }, [attemptId, finishExam, routeKind, timeLeft])
+    void finishExam('/results').then((submitted) => {
+      if (!submitted && autoFinishedAttemptRef.current === attemptId) {
+        autoFinishedAttemptRef.current = null
+        setTimeout(() => setAutoFinishRetry((retry) => retry + 1), 5000)
+      }
+    })
+  }, [attemptId, autoFinishRetry, finishExam, routeKind, timeLeft])
 
   useEffect(() => {
     if (Capacitor.getPlatform() !== 'android') return undefined
