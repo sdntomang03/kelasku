@@ -161,6 +161,16 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [])
 
   useEffect(() => {
+    function handleUnauthorized() {
+      setStudent(null)
+      setAuthenticated(false)
+      navigate('/login', { replace: true })
+    }
+    window.addEventListener('cbt:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('cbt:unauthorized', handleUnauthorized)
+  }, [navigate])
+
+  useEffect(() => {
     if (!authenticated) return undefined
     let cancelled = false
     Promise.all([authService.profile(), dashboardService.get(), examService.list()])
@@ -187,11 +197,6 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       .catch((error) => {
         if (cancelled) return
         if (error?.status === 401) {
-          localStorage.removeItem('cbt_token')
-          setStudent(null)
-          setAuthenticated(false)
-          window.location.replace('/login')
-          setDataError('Sesi login telah berakhir. Silakan masuk kembali.')
           return
         }
         setDataError(getErrorMessage(error))
@@ -565,17 +570,23 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   }, [navigate, selectedExam, setTimerAttemptId])
 
   const requestExamFullscreen = useCallback(() => {
+    setFullscreenError('')
     if (document.fullscreenElement) {
-      setFullscreenError('')
-      return
+      return Promise.resolve(true)
     }
     if (!document.documentElement.requestFullscreen) {
       setFullscreenError('Perangkat atau browser ini tidak mendukung mode layar penuh untuk ujian.')
-      return
+      return Promise.resolve(false)
     }
     document.documentElement.requestFullscreen()
-      .then(() => setFullscreenError(''))
-      .catch(() => setFullscreenError('Mode layar penuh tidak dapat diaktifkan. Tekan tombol di bawah untuk mencoba lagi.'))
+      .then(() => {
+        setFullscreenError('')
+        return true
+      })
+      .catch(() => {
+        setFullscreenError('Mode layar penuh tidak dapat diaktifkan. Tekan tombol di bawah untuk mencoba lagi.')
+        return false
+      })
   }, [])
 
   const confirmIntegrity = useCallback(async () => {
@@ -822,6 +833,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     return (
       <ExamAttemptPage
         exam={currentExam}
+        studentName={student?.name}
         question={fallbackQuestion}
         questionLoading={Boolean(currentQuestionId && !currentQuestion)}
         questionIds={questionIds}

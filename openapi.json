@@ -1,0 +1,478 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kelasku Student API",
+    "version": "1.0.0",
+    "description": "REST API contract used by the Kelasku student frontend. The backend implementation is a separate service."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000/api/v1/student",
+      "description": "Local development"
+    },
+    {
+      "url": "https://api.example.com/api/v1/student",
+      "description": "Replace with the deployed API URL"
+    }
+  ],
+  "tags": [
+    { "name": "Authentication" },
+    { "name": "Student" },
+    { "name": "Exams" },
+    { "name": "Attempts" }
+  ],
+  "paths": {
+    "/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Log in a student",
+        "operationId": "login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login succeeded; the access token is in data.token.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessEnvelope" } } }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a student account",
+        "operationId": "registerStudent",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created; email verification is required before login.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessEnvelope" } } }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/email/verification-notification": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Resend the verification email",
+        "operationId": "resendVerificationEmail",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Generic response that does not disclose account existence.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessEnvelope" } } } },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Revoke the current access token",
+        "operationId": "logout",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/profile": {
+      "get": {
+        "tags": ["Student"],
+        "summary": "Get the current student profile",
+        "operationId": "getProfile",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "tags": ["Student"],
+        "summary": "Get dashboard statistics and recent activity",
+        "operationId": "getDashboard",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/exams": {
+      "get": {
+        "tags": ["Exams"],
+        "summary": "List exams assigned to the current student",
+        "operationId": "listExams",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/exams/{exam}": {
+      "parameters": [{ "$ref": "#/components/parameters/ExamId" }],
+      "get": {
+        "tags": ["Exams"],
+        "summary": "Get an assigned exam",
+        "operationId": "getExam",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/exams/{exam}/start": {
+      "parameters": [{ "$ref": "#/components/parameters/ExamId" }],
+      "post": {
+        "tags": ["Exams"],
+        "summary": "Start or resume an exam attempt",
+        "operationId": "startExam",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": { "type": "string", "description": "Exam access token when the exam requires one." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/exams/{exam}/status": {
+      "parameters": [{ "$ref": "#/components/parameters/ExamId" }],
+      "get": {
+        "tags": ["Exams"],
+        "summary": "Get the current status of an exam",
+        "operationId": "getExamStatus",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts": {
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "List attempts owned by the current student",
+        "operationId": "listAttempts",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/attempts/{attempt}": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "Get an attempt owned by the current student",
+        "operationId": "getAttempt",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/questions/{question}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/AttemptId" },
+        { "$ref": "#/components/parameters/QuestionId" }
+      ],
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "Get a question without answer keys",
+        "operationId": "getAttemptQuestion",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/answers": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "post": {
+        "tags": ["Attempts"],
+        "summary": "Save or update an answer and its doubtful flag",
+        "operationId": "saveAttemptAnswer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SaveAnswerRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/attempts/{attempt}/progress": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "Get answer progress for an attempt",
+        "operationId": "getAttemptProgress",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/violation": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "post": {
+        "tags": ["Attempts"],
+        "summary": "Record an exam integrity violation",
+        "operationId": "recordViolation",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/submit": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "post": {
+        "tags": ["Attempts"],
+        "summary": "Submit an attempt and calculate its result",
+        "operationId": "submitAttempt",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/result": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "Get the result of a completed attempt",
+        "operationId": "getAttemptResult",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/sections": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "Get section-level scores",
+        "operationId": "getAttemptSections",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/detail-nilai": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "Get score details displayed by the frontend",
+        "operationId": "getAttemptScoreDetails",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/attempts/{attempt}/discussion": {
+      "parameters": [{ "$ref": "#/components/parameters/AttemptId" }],
+      "get": {
+        "tags": ["Attempts"],
+        "summary": "Get question discussion for a completed attempt",
+        "operationId": "getAttemptDiscussion",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum personal access token"
+      }
+    },
+    "parameters": {
+      "ExamId": {
+        "name": "exam",
+        "in": "path",
+        "required": true,
+        "description": "Hash ID returned by GET /exams, not the database ID.",
+        "schema": { "type": "string" }
+      },
+      "AttemptId": {
+        "name": "attempt",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer", "minimum": 1 }
+      },
+      "QuestionId": {
+        "name": "question",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "schemas": {
+      "SuccessEnvelope": {
+        "type": "object",
+        "required": ["success", "message", "data"],
+        "properties": {
+          "success": { "const": true },
+          "message": { "type": "string" },
+          "data": {}
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": ["success", "message"],
+        "properties": {
+          "success": { "const": false },
+          "message": { "type": "string" },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "minLength": 1 },
+          "password": { "type": "string", "minLength": 1 }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["name", "email", "password", "password_confirmation"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "email": { "type": "string", "format": "email" },
+          "username": { "type": "string" },
+          "sekolah": { "type": "string" },
+          "password": { "type": "string", "minLength": 8, "format": "password" },
+          "password_confirmation": { "type": "string", "format": "password" }
+        }
+      },
+      "SaveAnswerRequest": {
+        "type": "object",
+        "required": ["question_id", "answer", "is_doubtful"],
+        "properties": {
+          "question_id": { "type": "integer", "minimum": 1 },
+          "answer": {
+            "description": "Answer representation depends on question type: option ID, array, object, or essay text.",
+            "oneOf": [
+              { "type": "integer" },
+              { "type": "string" },
+              { "type": "array", "items": {} },
+              { "type": "object", "additionalProperties": {} }
+            ]
+          },
+          "is_doubtful": { "type": "boolean" }
+        }
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Successful request.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessEnvelope" } } }
+      },
+      "Error": {
+        "description": "Request failed.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+      },
+      "Unauthorized": {
+        "description": "Missing, invalid, or expired access token.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+      },
+      "Forbidden": {
+        "description": "Account is unverified or access is not permitted.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+      },
+      "NotFound": {
+        "description": "Resource does not exist or does not belong to the current student.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+      },
+      "ValidationError": {
+        "description": "Input validation failed.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }]
+}

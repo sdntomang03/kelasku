@@ -1,6 +1,8 @@
 # Student API v1
 
-Dokumentasi REST API untuk aplikasi mobile CBTPro. API ini menggunakan business logic, model, database, dan scoring service yang sama dengan aplikasi Blade.
+Kontrak REST API untuk aplikasi siswa Kelasku (web, Android, dan Windows). Frontend mengakses API ini melalui `VITE_API_URL`; layanan yang menyediakan endpoint, autentikasi, database, dan scoring harus dijalankan sebagai backend terpisah.
+
+Spesifikasi mesin OpenAPI tersedia di [`openapi.json`](./openapi.json). Source backend Laravel tidak disertakan di repository frontend ini, jadi dokumen dan OpenAPI mendefinisikan kontrak yang perlu dipenuhi server, bukan server yang dapat dijalankan dari repository ini.
 
 ## Base URL
 
@@ -122,6 +124,8 @@ Gunakan nilai tersebut pada endpoint berikut:
 | Method | Endpoint | Auth | Fungsi |
 |---|---|---:|---|
 | POST | `/login` | Tidak | Login siswa |
+| POST | `/register` | Tidak | Daftar akun siswa |
+| POST | `/email/verification-notification` | Tidak | Kirim ulang email verifikasi |
 | POST | `/logout` | Ya | Logout token aktif |
 | GET | `/profile` | Ya | Profil siswa |
 | GET | `/dashboard` | Ya | Statistik dashboard |
@@ -129,6 +133,7 @@ Gunakan nilai tersebut pada endpoint berikut:
 | GET | `/exams/{exam}` | Ya | Detail ujian |
 | POST | `/exams/{exam}/start` | Ya | Mulai atau lanjutkan ujian |
 | GET | `/exams/{exam}/status` | Ya | Status ujian |
+| GET | `/attempts` | Ya | Daftar attempt siswa |
 | GET | `/attempts/{attempt}` | Ya | Detail attempt |
 | GET | `/attempts/{attempt}/questions/{question}` | Ya | Ambil soal |
 | POST | `/attempts/{attempt}/answers` | Ya | Simpan jawaban dan flag doubtful |
@@ -136,7 +141,45 @@ Gunakan nilai tersebut pada endpoint berikut:
 | POST | `/attempts/{attempt}/violation` | Ya | Catat pelanggaran |
 | POST | `/attempts/{attempt}/submit` | Ya | Selesaikan dan score ujian |
 | GET | `/attempts/{attempt}/result` | Ya | Ambil hasil ujian |
+| GET | `/attempts/{attempt}/sections` | Ya | Nilai per section |
+| GET | `/attempts/{attempt}/detail-nilai` | Ya | Detail nilai yang ditampilkan frontend |
 | GET | `/attempts/{attempt}/discussion` | Ya | Ambil pembahasan soal |
+
+## Pendaftaran dan verifikasi email
+
+Pendaftaran tidak langsung membuat sesi login. Siswa harus memverifikasi email sebelum dapat login.
+
+```http
+POST {{base_url}}/register
+```
+
+Body:
+
+```json
+{
+    "name": "Nama Siswa",
+    "email": "siswa@example.com",
+    "username": "siswa123",
+    "sekolah": "SD Contoh",
+    "password": "password-kuat",
+    "password_confirmation": "password-kuat"
+}
+```
+
+`username` dan `sekolah` opsional; jika username kosong server dapat membangkitkannya dari email. Response sukses mengembalikan email akun yang didaftarkan di `data.email`. Input tidak valid menggunakan HTTP `422` dengan rincian per field pada `errors`.
+
+Untuk mengirim ulang tautan verifikasi:
+
+```http
+POST {{base_url}}/email/verification-notification
+Content-Type: application/json
+
+{
+    "email": "siswa@example.com"
+}
+```
+
+Server sebaiknya memberi respons generik yang tidak mengungkap apakah sebuah alamat email terdaftar. Endpoint ini dipakai layar login setelah percobaan login ditolak karena akun belum terverifikasi.
 
 ## 1. Login
 
@@ -424,6 +467,14 @@ Response:
     }
 }
 ```
+
+## Daftar Attempt
+
+```http
+GET {{base_url}}/attempts
+```
+
+Mengembalikan daftar attempt milik siswa terautentikasi. Setiap item menyediakan setidaknya ID, ujian terkait, status attempt, waktu mulai/selesai, dan informasi nilai jika hasil sudah tersedia.
 
 ## 9. Ambil Soal
 
@@ -718,6 +769,16 @@ Response:
 
 Untuk mode point seperti CPNS/TKP, `result_mode` akan bernilai `total`, `score_display_mode` menjadi `points`, dan `display_score` menunjukkan nilai point aktual, bukan persentase dari 100.
 
+## Detail Nilai
+
+Frontend juga meminta endpoint berikut ketika halaman detail hasil dibuka:
+
+```http
+GET {{base_url}}/attempts/{{attempt_id}}/detail-nilai
+```
+
+Response sukses menggunakan envelope standar. `data` memuat detail nilai untuk attempt tersebut dan harus hanya dapat diakses oleh pemilik attempt. Hasil yang belum tersedia dapat dikembalikan sebagai HTTP `400`; attempt yang tidak ditemukan atau bukan milik siswa sebagai HTTP `404`.
+
 ## 16. Pembahasan Soal
 
 Pembahasan hanya dapat diambil setelah attempt berstatus `completed`, hanya oleh siswa pemilik attempt, dan hanya jika `show_explanation` pada exam bernilai `true`.
@@ -822,10 +883,13 @@ POST /logout
 | Status | Arti |
 |---:|---|
 | 200 | Request berhasil |
+| 201 | Resource berhasil dibuat, misalnya pendaftaran |
 | 401 | Token tidak ada atau tidak valid |
-| 403 | Attempt locked, completed, atau akses ditolak |
+| 403 | Akun belum terverifikasi, attempt terkunci/selesai, atau akses ditolak |
 | 404 | Exam, attempt, atau question tidak ditemukan atau bukan milik siswa |
-| 422 | Validasi input gagal atau token ujian salah |
+| 422 | Validasi input gagal atau token ujian salah; response menyertakan `errors` per field |
+
+Semua response sukses sebaiknya memakai envelope `success`, `message`, dan `data`. Response error sebaiknya memakai `success: false`, `message`, dan `errors`. Frontend mengakhiri sesi lokal dan mengarahkan siswa ke login saat menerima HTTP `401`.
 
 ## Security Notes
 
@@ -835,3 +899,4 @@ POST /logout
 - Correct answer dan scoring key tidak pernah dikirim pada endpoint soal.
 - Client tidak dapat mengubah score, started time, finished time, atau status secara langsung.
 - Jangan menyimpan token di URL, log publik, atau source control.
+- Batasi request lintas-origin ke domain aplikasi yang memang digunakan dan aktifkan HTTPS pada produksi.

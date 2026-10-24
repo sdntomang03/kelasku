@@ -6,6 +6,7 @@ Aplikasi CBT berbasis React untuk siswa. Aplikasi menyediakan ujian online melal
 
 - React 19, React Router, dan Vite
 - Capacitor 8 dan Android Gradle Plugin
+- Electron untuk aplikasi desktop Windows
 - SQLite lokal melalui `@capacitor-community/sqlite`
 - Chart.js untuk visualisasi hasil ujian
 - KaTeX untuk menampilkan persamaan matematika
@@ -25,6 +26,12 @@ Aplikasi CBT berbasis React untuk siswa. Aplikasi menyediakan ujian online melal
 - Android Gradle Wrapper disertakan di folder `android`
 
 Minimum Android yang ditargetkan proyek ini adalah API 24 (Android 7.0). Untuk build melalui Android Studio, instal SDK dan tools yang diminta oleh Android Studio atau Gradle.
+
+### Build aplikasi Windows
+
+- Windows 10/11 64-bit
+- Node.js yang memenuhi kebutuhan Vite 8 dan npm
+- Koneksi internet ke server API siswa saat aplikasi digunakan
 
 ## Menjalankan secara lokal
 
@@ -58,6 +65,8 @@ Minimum Android yang ditargetkan proyek ini adalah API 24 (Android 7.0). Untuk b
 
    Buka URL lokal yang ditampilkan Vite di terminal.
 
+Kontrak endpoint yang diperlukan aplikasi didokumentasikan di [API-STUDENT-V1.md](./API-STUDENT-V1.md), dengan spesifikasi mesin [openapi.json](./openapi.json). Backend API harus disediakan dan dijalankan terpisah; repository ini hanya menyediakan frontend client.
+
 Perintah pemeriksaan:
 
 ```bash
@@ -67,6 +76,38 @@ npm run preview
 ```
 
 `npm run preview` menyajikan hasil build lokal untuk pengecekan, bukan server produksi.
+
+## Build installer Windows
+
+Aplikasi desktop dibungkus menggunakan Electron dan menghasilkan installer Windows NSIS. Sebelum build, siapkan `.env` di root proyek dengan URL API produksi:
+
+```env
+VITE_API_URL=https://alamat-server-anda/api/v1/student
+VITE_WHATSAPP_NUMBER=628xxxxxxxxxx
+```
+
+Build dan jalankan aplikasi desktop untuk pengujian:
+
+```powershell
+npm ci
+npm run desktop
+```
+
+Buat installer untuk distribusi:
+
+```powershell
+npm run dist:windows
+```
+
+Installer `.exe` berada di folder `release/`. Installer dapat dipasang per pengguna dan menawarkan pilihan lokasi pemasangan. Menu Belajar dan Latihan membaca database SQLite yang disertakan bersama aplikasi; ujian dan akun tetap membutuhkan koneksi ke server API. URL API ditanam ke bundle saat build, jadi pastikan nilainya benar sebelum membuat installer. Untuk distribusi publik, tandatangani installer dengan sertifikat code-signing agar Windows menampilkan penerbit tepercaya.
+
+Aplikasi Windows terbuka dalam mode fullscreen/kiosk dan mencegah penutupan biasa. Untuk keluar dari aplikasi, tekan **Ctrl+Alt+C**, lalu dalam 5 detik tekan **Ctrl+Alt+B** (tetap tahan Ctrl dan Alt saat menekan B). Shortcut ini didaftarkan secara global agar dapat digunakan kembali meski fokus jendela berubah.
+
+**Mode Electron ini bukan penguncian Windows.** Aplikasi desktop biasa tidak dapat memblokir tombol Windows, Ctrl+Esc, Ctrl+Alt+Delete, Task Manager, atau perpindahan ke aplikasi lain secara andal. Jangan gunakan ini sebagai satu-satunya pengamanan ujian berisiko tinggi.
+
+Untuk membatasi perangkat hanya ke aplikasi CBT, siapkan akun siswa standar pada perangkat khusus dan konfigurasikan **Windows Assigned Access** sebagai kiosk untuk aplikasi desktop (`ClassicAppPath`). Assigned Access tersedia pada Windows Pro, Enterprise, Education, dan IoT Enterprise; kiosk desktop dapat dikonfigurasi melalui XML/alat manajemen Windows. **Windows Home tidak mendukung Assigned Access.** Kiosk memiliki urutan keluar Windows tersendiri yang perlu dikonfigurasi dan diuji oleh administrator; shortcut keluar Electron di atas tidak menggantikan kebijakan OS. Untuk memfilter kombinasi tombol tingkat OS termasuk kombinasi yang dapat membuka Task Manager, gunakan fitur **Keyboard Filter** pada Windows Enterprise, Education, atau IoT Enterprise, bersama Assigned Access/AppLocker dan akun siswa tanpa hak administrator. Uji prosedur pemulihan administrator sebelum menerapkan pada perangkat ujian.
+
+Referensi resmi: [Assigned Access](https://learn.microsoft.com/windows/configuration/assigned-access/), [Assigned Access configuration file](https://learn.microsoft.com/windows/configuration/assigned-access/configuration-file), [Keyboard Filter](https://learn.microsoft.com/windows/configuration/keyboard-filter/). Perangkat pengembangan yang digunakan untuk build saat ini terdeteksi sebagai **Windows 10 Home Single Language**, sehingga fitur Assigned Access/Keyboard Filter tidak tersedia di sana tanpa mengganti edisi Windows atau menggunakan perangkat yang didukung.
 
 ## Database Belajar dan Latihan
 
@@ -207,7 +248,9 @@ src/services/               Integrasi API dan SQLite lokal
 public/latihan-contoh.db    Database SQLite bawaan
 scripts/                    Script pembuat database contoh
 android/                    Proyek native Android Capacitor
+electron/                   Main process aplikasi desktop Electron
 dist/                       Hasil build web (dibuat saat npm run build)
+release/                    Installer Windows (dibuat saat npm run dist:windows)
 ```
 
 ## Catatan

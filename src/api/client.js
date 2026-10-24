@@ -23,6 +23,10 @@ export async function apiRequest(path, options = {}) {
   })
   const payload = await response.json()
   if (!response.ok || payload.success === false) {
+    if (response.status === 401) {
+      localStorage.removeItem('cbt_token')
+      window.dispatchEvent(new Event('cbt:unauthorized'))
+    }
     throw new ApiError(payload.message || 'Request gagal', response.status, payload.errors || {})
   }
   return payload.data
