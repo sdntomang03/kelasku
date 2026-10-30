@@ -11,7 +11,7 @@ import { examService } from '../services/examService'
 import { getErrorMessage } from '../utils/api'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
 import { randomizeQuestion, shuffle } from '../utils/question'
-import { examRequiresToken, getClassName, getExamQuestionCount, getSchoolName, isExamCompleted, isExamLocked } from '../utils/exam'
+import { examRequiresToken, getClassName, getExamQuestionCount, getSchoolName, isExamCompleted, isExamExpired, isExamLocked } from '../utils/exam'
 import { useExamAttempt } from '../hooks/useExamAttempt'
 import { useExamAutosave } from '../hooks/useExamAutosave'
 import { useExamTimer } from '../hooks/useExamTimer'
@@ -141,6 +141,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
   const fallbackQuestion = currentQuestion || Object.values(questions)[0] || null
   const attemptStorageKey = examId ? `cbt_exam_attempt_${examId}` : ''
   const completed = useMemo(() => exams.filter(isExamCompleted), [exams])
+  const visibleExamCount = useMemo(() => exams.filter((exam) => isExamCompleted(exam) || !isExamExpired(exam)).length, [exams])
   const answeredCount = Object.keys(answers).length
   const isTimeExpired = routeKind === 'exam'
     && timerAttemptId === attemptId
@@ -910,7 +911,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         <nav className="main-nav" aria-label="Navigasi utama">
           <span className="nav-label">MENU UTAMA</span>
           <NavItem icon="grid" label="Ringkasan" active={page === 'dashboard'} onClick={() => { setMobileMenuOpen(false); navigate('/dashboard') }} />
-          <NavItem icon="clipboard" label="Ujian saya" active={page === 'exams' || page === 'exam-detail'} badge={exams.length} onClick={() => { setMobileMenuOpen(false); navigate('/exams') }} />
+          <NavItem icon="clipboard" label="Ujian saya" active={page === 'exams' || page === 'exam-detail'} badge={visibleExamCount} onClick={() => { setMobileMenuOpen(false); navigate('/exams') }} />
           <NavItem icon="chart" label="Hasil ujian" active={page === 'results'} onClick={() => { setMobileMenuOpen(false); navigate('/results') }} />
           {canUseLocalPractice && <NavItem icon="book" label="Belajar" active={page.startsWith('learn')} onClick={() => { setMobileMenuOpen(false); navigate('/learn') }} />}
           {canUseLocalPractice && <NavItem icon="clipboard" label="Latihan" active={page.startsWith('practice')} onClick={() => { setMobileMenuOpen(false); navigate('/practice') }} />}

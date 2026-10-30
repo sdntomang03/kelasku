@@ -1,13 +1,19 @@
 import { useState } from 'react'
 import Icon from '../components/common/Icon'
 import { formatDate } from '../utils/date'
-import { getExamQuestionCount, isExamCompleted, isExamLocked, isExamOngoing } from '../utils/exam'
+import { getExamQuestionCount, isExamCompleted, isExamExpired, isExamLocked, isExamOngoing } from '../utils/exam'
 
 export default function ExamListPage({ exams, onExam, onExplanation, onDetail }) {
   const [filter, setFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(6)
-  const filteredExams = exams.filter((exam) => filter === 'all' || filter === 'completed' && isExamCompleted(exam) || filter === 'ongoing' && isExamOngoing(exam) || filter === 'not_started' && !isExamCompleted(exam) && !isExamOngoing(exam))
+  const filteredExams = exams.filter((exam) => {
+    if (!isExamCompleted(exam) && isExamExpired(exam)) return false
+    return filter === 'all'
+      || filter === 'completed' && isExamCompleted(exam)
+      || filter === 'ongoing' && isExamOngoing(exam)
+      || filter === 'not_started' && !isExamCompleted(exam) && !isExamOngoing(exam)
+  })
   const totalPages = Math.max(1, Math.ceil(filteredExams.length / pageSize))
   const visibleExams = filteredExams.slice((page - 1) * pageSize, page * pageSize)
   const updateFilter = (value) => { setFilter(value); setPage(1) }

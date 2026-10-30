@@ -2,6 +2,11 @@ export function isExamCompleted(exam) {
   return String(exam?.status || '').toLowerCase() === 'completed'
 }
 
+export function isExamExpired(exam, now = Date.now()) {
+  const endTime = Date.parse(exam?.end_time)
+  return Number.isFinite(endTime) && endTime <= now
+}
+
 export function getExamQuestionCount(exam) {
   const count = [
     exam?.total_questions,

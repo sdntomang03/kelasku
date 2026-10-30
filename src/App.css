@@ -535,6 +535,12 @@ jeep-sqlite{display:none}
 .login-form label{font-size:12px;line-height:1.5}
 .login-form input{border-radius:10px;padding:13px 14px;font-size:14px}
 .login-form input::placeholder{color:#a3a8b7}
+.login-form .password-input-wrap{position:relative}
+.login-form .password-input-wrap input{width:100%;padding-right:48px}
+.login-form .password-visibility-toggle{position:absolute;top:50%;right:7px;display:grid;width:36px;height:36px;place-items:center;transform:translateY(-50%);border:0;border-radius:8px;background:transparent;color:#8990a2}
+.login-form .password-visibility-toggle:hover:not(:disabled),.login-form .password-visibility-toggle:focus-visible{background:#f2f0fb;color:var(--purple);outline:none}
+.login-form .password-visibility-toggle:focus-visible{box-shadow:0 0 0 2px rgba(91,73,194,.25)}
+.login-form .password-visibility-toggle:disabled{cursor:wait;opacity:.6}
 .login-form .field-error{display:flex;align-items:flex-start;gap:10px;margin:12px 0;padding:12px 14px;border:1px solid #f2c8cc;border-radius:10px;background:#fff5f5;color:#a92f3b;font-size:13px;font-weight:500;line-height:1.55}
 .login-form .field-error>span{display:grid;place-items:center;width:19px;height:19px;flex:0 0 19px;margin-top:1px;border-radius:50%;background:#fce1e3;color:#a92f3b;font-size:12px;font-weight:800}
 .login-form .field-error p{margin:0}

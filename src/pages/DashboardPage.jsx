@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import Icon from '../components/common/Icon'
 import { formatDate } from '../utils/date'
-import { getExamQuestionCount, isExamCompleted, isExamOngoing } from '../utils/exam'
+import { getExamQuestionCount, isExamCompleted, isExamExpired, isExamOngoing } from '../utils/exam'
 
 
 export default function DashboardPage({ onExam, onPage, exams, completed, student, dashboard }) {
-  const upcoming = exams.filter((exam) => !isExamCompleted(exam))
+  const upcoming = exams.filter((exam) => !isExamCompleted(exam) && !isExamExpired(exam))
   const stats = dashboard?.stats || {}
   const progress = exams.length ? Math.round((completed.length / exams.length) * 100) : 0
   const serverTime = dashboard?.server_time || dashboard?.current_time || exams.find((exam) => exam.server_time)?.server_time

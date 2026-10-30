@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Icon from '../components/common/Icon'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
 
 function Logo() {
@@ -38,6 +39,7 @@ export default function LoginPage({
   })
   const [passwordMismatch, setPasswordMismatch] = useState('')
   const [verificationEmail, setVerificationEmail] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const whatsappUrl = getSupportWhatsAppUrl()
   const updateRegistration = (event) => {
     const { name, value } = event.target
@@ -73,7 +75,7 @@ export default function LoginPage({
           <h2>Selamat datang kembali</h2>
           <form onSubmit={onSubmit}>
             <label htmlFor="username">Username atau NIS<input id="username" value={login.username} onChange={(event) => { onLoginIdentityChange(); setLogin((current) => ({ ...current, username: event.target.value })) }} placeholder="Masukkan username" autoComplete="username" disabled={loading} required /></label>
-            <label htmlFor="password">Password<input id="password" type="password" value={login.password} onChange={(event) => setLogin((current) => ({ ...current, password: event.target.value }))} placeholder="Masukkan password" autoComplete="current-password" disabled={loading} required /></label>
+            <label htmlFor="password">Password<div className="password-input-wrap"><input id="password" type={showPassword ? 'text' : 'password'} value={login.password} onChange={(event) => setLogin((current) => ({ ...current, password: event.target.value }))} placeholder="Masukkan password" autoComplete="current-password" disabled={loading} required /><button type="button" className="password-visibility-toggle" aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} aria-pressed={showPassword} onClick={() => setShowPassword((visible) => !visible)} disabled={loading}><Icon name={showPassword ? 'eyeOff' : 'eye'} size={19} /></button></div></label>
             {error && <div className="field-error" role="alert"><span aria-hidden="true">!</span><p>{error}</p></div>}
             <button type="submit" className="primary-button wide login-submit-button" disabled={loading}>
               <span>{loading ? 'Memproses...' : 'Masuk'}</span>
