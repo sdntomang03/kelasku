@@ -782,6 +782,8 @@ Response:
 
 Untuk mode point seperti CPNS/TKP, `result_mode` akan bernilai `total`, `score_display_mode` menjadi `points`, dan `display_score` menunjukkan nilai point aktual, bukan persentase dari 100.
 
+Pada section TKP, semua jawaban yang diisi dihitung sebagai dijawab (bukan salah). Nilai maksimal section TKP adalah `5 * question_count`; backend sebaiknya tetap mengirim `question_count` dan `earned` sebagai nilai point yang diperoleh.
+
 ## Detail Nilai
 
 Frontend juga meminta endpoint berikut ketika halaman detail hasil dibuka:
