@@ -28,6 +28,26 @@ export function shuffle(items) {
   return result
 }
 
+function shuffleWithSeed(items, seed) {
+  const result = [...items]
+  let state = 2166136261
+  for (const character of String(seed)) {
+    state = Math.imul(state ^ character.charCodeAt(0), 16777619)
+  }
+  const nextRandom = () => {
+    state = (state + 0x6D2B79F5) >>> 0
+    let value = state
+    value = Math.imul(value ^ (value >>> 15), value | 1)
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+  }
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(nextRandom() * (index + 1))
+    ;[result[index], result[randomIndex]] = [result[randomIndex], result[index]]
+  }
+  return result
+}
+
 export function shuffleQuestionIdsBySection(sections, questionIds) {
   const ids = Array.isArray(questionIds) ? questionIds : []
   if (!Array.isArray(sections) || sections.length === 0) return ids
@@ -45,12 +65,13 @@ export function shuffleQuestionIdsBySection(sections, questionIds) {
   return sectionGroups.flat()
 }
 
-export function randomizeQuestion(question, config) {
+export function randomizeQuestion(question, config, seed) {
   if (!config?.random_answer) return question
   const randomized = { ...question }
-  if (Array.isArray(question.options)) randomized.options = shuffle(question.options)
+  const randomize = (items, suffix) => seed === undefined ? shuffle(items) : shuffleWithSeed(items, `${seed}:${suffix}`)
+  if (Array.isArray(question.options)) randomized.options = randomize(question.options, 'options')
   if (question.type === 'matching' && Array.isArray(question.matches)) {
-    randomized.target_options = shuffle(question.matches.map((match) => ({ id: match.id, text: match.target_text })))
+    randomized.target_options = randomize(question.matches.map((match) => ({ id: match.id, text: match.target_text })), 'targets')
   }
   return randomized
 }

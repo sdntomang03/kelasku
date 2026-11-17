@@ -325,7 +325,10 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     apiRequest(`/attempts/${attemptId}/questions/${currentQuestionId}`)
       .then((data) => {
         if (cancelled) return
-        setQuestions((items) => ({ ...items, [currentQuestionId]: randomizeQuestion(data.question, examConfig) }))
+        setQuestions((items) => ({
+          ...items,
+          [currentQuestionId]: randomizeQuestion(data.question, examConfig, `${attemptId}:${currentQuestionId}`),
+        }))
         if (data.answer !== null && data.answer !== undefined) {
           let savedAnswer = data.answer
           if (typeof savedAnswer === 'string' && ['multiple_choice', 'complex_choice', 'matching', 'true_false', 'true_false_multi'].includes(data.question.type)) {
