@@ -28,6 +28,21 @@ export function shuffle(items) {
   return result
 }
 
+export function shuffleQuestionIdsBySection(sections, questionIds) {
+  const ids = Array.isArray(questionIds) ? questionIds : []
+  const availableIds = new Set(ids)
+  const groupedIds = new Set()
+  const sectionGroups = (Array.isArray(sections) ? sections : []).map((section) => {
+    const sectionIds = (Array.isArray(section.question_ids) ? section.question_ids : [])
+      .filter((id) => availableIds.has(id) && !groupedIds.has(id))
+    sectionIds.forEach((id) => groupedIds.add(id))
+    return shuffle(sectionIds)
+  })
+  const ungroupedIds = ids.filter((id) => !groupedIds.has(id))
+
+  return [...sectionGroups.flat(), ...shuffle(ungroupedIds)]
+}
+
 export function randomizeQuestion(question, config) {
   if (!config?.random_answer) return question
   const randomized = { ...question }

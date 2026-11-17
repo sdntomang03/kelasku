@@ -10,7 +10,7 @@ import { dashboardService } from '../services/dashboardService'
 import { examService } from '../services/examService'
 import { getErrorMessage } from '../utils/api'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
-import { randomizeQuestion, shuffle } from '../utils/question'
+import { randomizeQuestion, shuffleQuestionIdsBySection } from '../utils/question'
 import { examRequiresToken, getClassName, getExamQuestionCount, getSchoolName, isExamCompleted, isExamExpired, isExamLocked } from '../utils/exam'
 import { useExamAttempt } from '../hooks/useExamAttempt'
 import { useExamAutosave } from '../hooks/useExamAutosave'
@@ -621,7 +621,9 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         locked: Boolean(data.attempt?.is_locked),
         warning: false,
       })
-      const questionOrder = data.config?.random_question ? shuffle(data.question_ids || []) : (data.question_ids || [])
+      const questionOrder = data.config?.random_question
+        ? shuffleQuestionIdsBySection(data.sections, data.question_ids)
+        : (data.question_ids || [])
       setQuestionIds(questionOrder)
       setQuestions({})
       setAnswers(data.existing_answers || {})
