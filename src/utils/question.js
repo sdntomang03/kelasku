@@ -30,6 +30,8 @@ export function shuffle(items) {
 
 export function shuffleQuestionIdsBySection(sections, questionIds) {
   const ids = Array.isArray(questionIds) ? questionIds : []
+  if (!Array.isArray(sections) || sections.length === 0) return ids
+
   const availableIds = new Set(ids)
   const groupedIds = new Set()
   const sectionGroups = (Array.isArray(sections) ? sections : []).map((section) => {
@@ -38,9 +40,9 @@ export function shuffleQuestionIdsBySection(sections, questionIds) {
     sectionIds.forEach((id) => groupedIds.add(id))
     return shuffle(sectionIds)
   })
-  const ungroupedIds = ids.filter((id) => !groupedIds.has(id))
 
-  return [...sectionGroups.flat(), ...shuffle(ungroupedIds)]
+  if (ids.some((id) => !groupedIds.has(id))) return ids
+  return sectionGroups.flat()
 }
 
 export function randomizeQuestion(question, config) {

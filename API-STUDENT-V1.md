@@ -412,7 +412,18 @@ Response:
             "end_at": "2026-09-24T21:20:00+07:00",
             "remaining_seconds": 5400
         },
-        "sections": [],
+        "sections": [
+            {
+                "id": 1,
+                "name": "Section 1",
+                "question_ids": [12, 13]
+            },
+            {
+                "id": 2,
+                "name": "Section 2",
+                "question_ids": [14]
+            }
+        ],
         "question_ids": [12, 13, 14],
         "existing_answers": {},
         "flags": [],
@@ -442,6 +453,8 @@ if (json.success && json.data && json.data.question_ids.length > 0) {
 ```
 
 Server menentukan `started_at`, deadline, dan remaining time. Client tidak boleh mengirim waktu sebagai sumber kebenaran.
+
+Untuk ujian yang mengaktifkan `random_question`, `sections` harus berisi daftar section berurutan dan setiap section harus menyertakan `question_ids`. Aplikasi mengacak soal hanya di dalam section. Jika metadata section kosong atau tidak mencakup semua `question_ids`, aplikasi mempertahankan urutan dari server agar soal antar-section tidak tercampur.
 
 ## 8. Detail Attempt
 

@@ -259,15 +259,42 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     try {
       const recovery = JSON.parse(stored)
       if (!recovery.attempt?.id || !Array.isArray(recovery.questionIds)) return undefined
-      const recoveryTimer = setTimeout(() => {
-        setAttempt(recovery.attempt)
-        setQuestionIds(recovery.questionIds)
-        setExamConfig(recovery.config || { random_question: false, random_answer: false })
-        setAnswers(recovery.answers || {})
-        setDoubtful(recovery.doubtful || [])
+      const recoveryTimer = setTimeout(async () => {
+        let recoveredAttempt = recovery.attempt
+        let recoveredQuestionIds = recovery.questionIds
+        let recoveredConfig = recovery.config || { random_question: false, random_answer: false }
+        let recoveredAnswers = recovery.answers || {}
+        let recoveredFlags = recovery.doubtful || []
+
+        try {
+          if (recoveredConfig.random_question && recovery.questionOrderVersion !== 1) {
+            const refreshed = await examService.start(examId)
+            const sourceIds = Array.isArray(refreshed.question_ids) ? refreshed.question_ids : recovery.questionIds
+            const sections = refreshed.sections?.length
+              ? refreshed.sections
+              : refreshed.exam?.sections || selectedExam?.sections
+            const refreshedConfig = refreshed.config || recoveredConfig
+            recoveredQuestionIds = refreshedConfig.random_question
+              ? shuffleQuestionIdsBySection(sections, sourceIds)
+              : sourceIds
+            recoveredAttempt = refreshed.attempt || recoveredAttempt
+            recoveredConfig = refreshedConfig
+            recoveredAnswers = refreshed.existing_answers || recoveredAnswers
+            recoveredFlags = refreshed.flags || recoveredFlags
+          }
+        } catch (error) {
+          setDataError(getErrorMessage(error))
+          return
+        }
+
+        setAttempt(recoveredAttempt)
+        setQuestionIds(recoveredQuestionIds)
+        setExamConfig(recoveredConfig)
+        setAnswers(recoveredAnswers)
+        setDoubtful(recoveredFlags)
         setViolationState(recovery.violationState || { count: 0, max: 0, locked: false, warning: false })
-        if (typeof recovery.activeQuestion === 'number') setActiveQuestion(Math.min(recovery.activeQuestion, recovery.questionIds.length - 1))
-        apiRequest(`/attempts/${recovery.attempt.id}`)
+        if (typeof recovery.activeQuestion === 'number') setActiveQuestion(Math.min(recovery.activeQuestion, recoveredQuestionIds.length - 1))
+        apiRequest(`/attempts/${recoveredAttempt.id}`)
           .then((serverAttempt) => {
             setAttempt(serverAttempt)
             setTimeLeft(typeof serverAttempt.remaining_seconds === 'number' ? serverAttempt.remaining_seconds : 0)
@@ -289,7 +316,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       localStorage.removeItem(`cbt_exam_attempt_${examId}`)
     }
     return undefined
-  }, [routeKind, examId, authenticated, questionIds.length, navigate, recordSubmittedAttempt, setActiveQuestion, setAnswers, setAttempt, setDoubtful, setExamConfig, setQuestionIds, setTimeLeft, setTimerAttemptId, setViolationState])
+  }, [routeKind, examId, authenticated, questionIds.length, navigate, recordSubmittedAttempt, selectedExam, setActiveQuestion, setAnswers, setAttempt, setDataError, setDoubtful, setExamConfig, setQuestionIds, setTimeLeft, setTimerAttemptId, setViolationState])
 
   useEffect(() => {
     if (routeKind !== 'exam' || !attemptId || !currentQuestionId) return undefined
@@ -321,6 +348,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
     localStorage.setItem(attemptStorageKey, JSON.stringify({
       attempt,
       questionIds,
+      questionOrderVersion: 1,
       config: examConfig,
       answers,
       doubtful,
@@ -622,7 +650,10 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
         warning: false,
       })
       const questionOrder = data.config?.random_question
-        ? shuffleQuestionIdsBySection(data.sections, data.question_ids)
+        ? shuffleQuestionIdsBySection(
+          data.sections?.length ? data.sections : data.exam?.sections || selectedExam.sections,
+          data.question_ids,
+        )
         : (data.question_ids || [])
       setQuestionIds(questionOrder)
       setQuestions({})
@@ -633,6 +664,7 @@ function AppContent({ routeKind, examId, questionId, categoryId, packageId, mate
       localStorage.setItem(`cbt_exam_attempt_${selectedExam.id}`, JSON.stringify({
         attempt: data.attempt,
         questionIds: questionOrder,
+        questionOrderVersion: 1,
         config: data.config || { random_question: false, random_answer: false },
         answers: data.existing_answers || {},
         doubtful: data.flags || [],
