@@ -1,0 +1,145 @@
+.quill-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.quill-content > :first-child {
+  margin-top: 0;
+}
+
+.quill-content > :last-child {
+  margin-bottom: 0;
+}
+
+.quill-content p,
+.quill-content h1,
+.quill-content h2,
+.quill-content h3 {
+  margin: 0 0 0.65em;
+}
+
+.quill-content h1 {
+  font-size: 1.8em;
+}
+
+.quill-content h2 {
+  font-size: 1.5em;
+}
+
+.quill-content h3 {
+  font-size: 1.2em;
+}
+
+.quill-content ol,
+.quill-content ul {
+  margin: 0.6em 0;
+  padding-left: 1.5em;
+}
+
+.quill-content ol > li[data-list="bullet"] {
+  list-style-type: disc;
+}
+
+.quill-content .ql-ui {
+  display: none;
+}
+
+.quill-content .ql-indent-1 {
+  margin-inline-start: 3em;
+}
+
+.quill-content .ql-indent-2 {
+  margin-inline-start: 6em;
+}
+
+.quill-content .ql-indent-3 {
+  margin-inline-start: 9em;
+}
+
+.quill-content .ql-indent-4 {
+  margin-inline-start: 12em;
+}
+
+.quill-content .ql-indent-5 {
+  margin-inline-start: 15em;
+}
+
+.quill-content .ql-indent-6 {
+  margin-inline-start: 18em;
+}
+
+.quill-content .ql-indent-7 {
+  margin-inline-start: 21em;
+}
+
+.quill-content .ql-indent-8 {
+  margin-inline-start: 24em;
+}
+
+.quill-content .ql-align-center {
+  text-align: center;
+}
+
+.quill-content .ql-align-right {
+  text-align: right;
+}
+
+.quill-content .ql-align-justify {
+  text-align: justify;
+}
+
+.quill-content .ql-direction-rtl {
+  direction: rtl;
+}
+
+.quill-content .ql-size-small {
+  font-size: 0.75em;
+}
+
+.quill-content .ql-size-large {
+  font-size: 1.5em;
+}
+
+.quill-content .ql-size-huge {
+  font-size: 2.5em;
+}
+
+.quill-content .ql-font-serif {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.quill-content .ql-font-monospace {
+  font-family: monospace;
+}
+
+.quill-content blockquote {
+  margin: 0.8em 0;
+  padding-left: 1em;
+  border-left: 4px solid #d8d3f5;
+  color: #626b80;
+}
+
+.quill-content pre {
+  overflow-x: auto;
+  padding: 0.8em 1em;
+  border-radius: 8px;
+  background: #f4f5f9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.quill-content img,
+.quill-content video {
+  max-width: 100%;
+  height: auto;
+}
+
+.quill-content a {
+  color: #5140bf;
+  text-decoration: underline;
+}
+
+.answer-options .quill-content {
+  display: block;
+  flex: 1;
+}

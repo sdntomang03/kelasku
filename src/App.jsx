@@ -1,5 +1,6 @@
 import { BrowserRouter, HashRouter } from 'react-router-dom'
 import './App.css'
+import './components/content/richContent.css'
 import AppRoutes from './routes/AppRoutes'
 
 function App() {
