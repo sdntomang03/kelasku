@@ -113,15 +113,15 @@ export default function LoginPage({
         <span className="eyebrow">UJIAN BERBASIS KOMPUTER</span>
         <h1>
    <span className="login-copy-line">
-  <span className="login-copy-word">Langkah</span>{' '}
-  <span className="login-copy-word">kecil</span>{' '}
-  <span className="login-copy-word">hari</span>{' '}
-  <span className="login-copy-word">ini,</span>
+  <span className="login-copy-word">Jujur</span>{' '}
+  <span className="login-copy-word">pada</span>{' '}
+  <span className="login-copy-word">proses,</span>
 </span>
 <em className="login-copy-line login-copy-line--accent">
-  <span className="login-copy-word">lompatan</span>{' '}
-  <span className="login-copy-word">besar</span>{' '}
-  <span className="login-copy-word">nanti.</span>
+  <span className="login-copy-word">yakin</span>{' '}
+  <span className="login-copy-word">pada</span>{' '}
+  <span className="login-copy-word">kemampuan</span>{' '}
+  <span className="login-copy-word">sendiri.</span>
 </em>
         </h1>
         <p>Kerjakan ujian, tinjau hasil, dan pantau perkembangan belajarmu melalui satu portal.</p>
