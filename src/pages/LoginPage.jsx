@@ -1,7 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Icon from '../components/common/Icon'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
 import './LoginPage.css'
+
+const motivationMessages = [
+  'Setiap kemajuan dimulai dari proses belajar yang konsisten.',
+  'Kesalahan adalah kesempatan untuk memahami lebih baik.',
+  'Langkah kecil hari ini membangun pencapaian esok hari.',
+  'Rasa ingin tahu membuka jalan menuju pengetahuan baru.',
+]
 
 function Logo() {
   return <div className="brand"><span className="brand-mark">C</span><span>TKA<span className="brand-accent">SD</span></span></div>
@@ -30,6 +37,7 @@ export default function LoginPage({
   resendLoading,
 }) {
   const [mode, setMode] = useState('login')
+  const [quoteIndex, setQuoteIndex] = useState(0)
   const [registration, setRegistration] = useState({
     name: '',
     username: '',
@@ -42,6 +50,29 @@ export default function LoginPage({
   const [verificationEmail, setVerificationEmail] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const whatsappUrl = getSupportWhatsAppUrl()
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let timer
+    const updateRotation = () => {
+      if (motionPreference.matches) {
+        window.clearInterval(timer)
+        timer = undefined
+      } else if (timer === undefined) {
+        timer = window.setInterval(() => {
+          setQuoteIndex((index) => (index + 1) % motivationMessages.length)
+        }, 6000)
+      }
+    }
+
+    updateRotation()
+    motionPreference.addEventListener('change', updateRotation)
+    return () => {
+      window.clearInterval(timer)
+      motionPreference.removeEventListener('change', updateRotation)
+    }
+  }, [])
+
   const updateRegistration = (event) => {
     const { name, value } = event.target
     setRegistration((current) => ({ ...current, [name]: value }))
@@ -61,12 +92,34 @@ export default function LoginPage({
     <div className="login-decoration decor-two" />
     <div className="login-panel">
       <Logo />
-      <div className="login-copy">
-        <span className="eyebrow">PORTAL SISWA</span>
-        <h1>Belajar lebih terarah,<br /><em>berprestasi lebih hebat.</em></h1>
-        <p>Tempat kamu mengerjakan ujian, melihat hasil, dan melacak perkembangan belajar.</p>
+      <div className="login-cosmos" aria-hidden="true">
+        <span className="login-cosmos__star star-one" />
+        <span className="login-cosmos__star star-two" />
+        <span className="login-cosmos__star star-three" />
+        <span className="login-cosmos__star star-four" />
+        <span className="login-cosmos__star star-five" />
+        <span className="login-cosmos__orbit" />
+        <span className="login-cosmos__orbit login-cosmos__orbit--tilted" />
+        <span className="login-cosmos__planet" />
+        <span className="login-cosmos__satellite-track"><span className="login-cosmos__satellite" /></span>
       </div>
-      <div className="login-quote"><span>“</span><p>Kesuksesan adalah hasil dari persiapan, kerja keras, dan belajar dari kegagalan.</p></div>
+      <div className="login-copy">
+        <span className="eyebrow">PORTAL PEMBELAJARAN SISWA</span>
+        <h1>
+          <span className="login-copy-line">
+            <span className="login-copy-word">Belajar</span>{' '}
+            <span className="login-copy-word">terarah,</span>
+          </span>
+          <em className="login-copy-line login-copy-line--accent">
+            <span className="login-copy-word">melangkah</span>{' '}
+            <span className="login-copy-word">lebih</span>{' '}
+            <span className="login-copy-word">percaya</span>{' '}
+            <span className="login-copy-word">diri.</span>
+          </em>
+        </h1>
+        <p>Kerjakan ujian, tinjau hasil, dan pantau perkembangan belajarmu melalui satu portal.</p>
+      </div>
+      <div className="login-quote"><span>“</span><p key={quoteIndex}>{motivationMessages[quoteIndex]}</p></div>
     </div>
     <div className={`login-form-wrap ${mode === 'register' ? 'registration-wrap' : ''}`}>
       <div className={`login-form ${mode === 'register' ? 'registration-form' : ''}`}>

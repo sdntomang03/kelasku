@@ -83,6 +83,113 @@
   z-index: 1;
 }
 
+.login-cosmos {
+  position: absolute;
+  z-index: 0;
+  top: 44px;
+  right: 5%;
+  width: 240px;
+  height: 180px;
+  color: #d7d0ff;
+  opacity: .8;
+  pointer-events: none;
+  animation: login-cosmos-entrance 1s .25s ease-out both;
+}
+
+.login-cosmos__star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #e9e5ff;
+  box-shadow: 0 0 10px rgba(210, 201, 255, .9);
+  animation: login-star-twinkle 3s ease-in-out infinite alternate;
+}
+
+.login-cosmos__star.star-one {
+  top: 23px;
+  left: 28px;
+}
+
+.login-cosmos__star.star-two {
+  top: 49px;
+  right: 17px;
+  animation-delay: .8s;
+}
+
+.login-cosmos__star.star-three {
+  bottom: 20px;
+  left: 47px;
+  animation-delay: 1.4s;
+}
+
+.login-cosmos__star.star-four {
+  top: 112px;
+  right: 12px;
+  width: 2px;
+  height: 2px;
+  animation-delay: .4s;
+}
+
+.login-cosmos__star.star-five {
+  top: 12px;
+  right: 73px;
+  width: 2px;
+  height: 2px;
+  animation-delay: 1.8s;
+}
+
+.login-cosmos__orbit,
+.login-cosmos__planet,
+.login-cosmos__satellite-track {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+}
+
+.login-cosmos__orbit {
+  width: 154px;
+  height: 154px;
+  border: 1px solid rgba(210, 201, 255, .3);
+  transform: translate(-50%, -50%);
+}
+
+.login-cosmos__orbit--tilted {
+  width: 218px;
+  height: 88px;
+  border-color: rgba(210, 201, 255, .2);
+  transform: translate(-50%, -50%) rotate(-28deg);
+}
+
+.login-cosmos__planet {
+  width: 34px;
+  height: 34px;
+  background: radial-gradient(circle at 30% 28%, #eeeaff 0, #a89af5 30%, #6f62bd 72%);
+  box-shadow: 0 0 28px rgba(165, 149, 255, .5);
+  transform: translate(-50%, -50%);
+  animation: login-planet-glow 4s ease-in-out infinite alternate;
+}
+
+.login-cosmos__satellite-track {
+  width: 0;
+  height: 0;
+  animation: login-satellite-orbit 16s linear infinite;
+}
+
+.login-cosmos__satellite {
+  position: absolute;
+  top: -77px;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 50%;
+  background: #c6bbff;
+  box-shadow: 0 0 13px rgba(198, 187, 255, .9);
+  transform: translate(-50%, -50%);
+}
+
 .login-panel > .brand {
   color: #fff;
   animation: login-rise .65s ease-out both;
@@ -115,6 +222,7 @@
   color: #c4bbff;
   font-size: 11px;
   letter-spacing: 1.6px;
+  animation: login-text-reveal .55s .18s ease-out both;
 }
 
 .login-copy .eyebrow::before {
@@ -132,6 +240,39 @@
   letter-spacing: -.045em;
 }
 
+.login-copy h1 .login-copy-line {
+  display: block;
+}
+
+.login-copy-word {
+  display: inline-block;
+  animation: login-text-reveal .7s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.login-copy-line:first-child .login-copy-word:nth-child(1) {
+  animation-delay: .32s;
+}
+
+.login-copy-line:first-child .login-copy-word:nth-child(2) {
+  animation-delay: .55s;
+}
+
+.login-copy-line--accent .login-copy-word:nth-child(1) {
+  animation-delay: .78s;
+}
+
+.login-copy-line--accent .login-copy-word:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.login-copy-line--accent .login-copy-word:nth-child(3) {
+  animation-delay: 1.22s;
+}
+
+.login-copy-line--accent .login-copy-word:nth-child(4) {
+  animation-delay: 1.44s;
+}
+
 .login-copy h1 em {
   color: #b6aaff;
   font-style: normal;
@@ -143,6 +284,7 @@
   color: #c1c5d6;
   font-size: 15px;
   line-height: 1.8;
+  animation: login-text-reveal .65s 1.72s ease-out both;
 }
 
 .login-quote {
@@ -166,6 +308,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.7;
+  animation: login-quote-swap .55s ease-out both;
 }
 
 .login-form-wrap {
@@ -248,6 +391,30 @@
   }
 }
 
+@keyframes login-text-reveal {
+  from {
+    filter: blur(3px);
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-quote-swap {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes login-glow-drift {
   from {
     transform: translate3d(-12px, 8px, 0) scale(.96);
@@ -272,6 +439,43 @@
   }
 }
 
+@keyframes login-cosmos-entrance {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.96);
+  }
+  to {
+    opacity: .8;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-star-twinkle {
+  from {
+    opacity: .35;
+    transform: scale(.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes login-planet-glow {
+  from {
+    box-shadow: 0 0 20px rgba(165, 149, 255, .35);
+  }
+  to {
+    box-shadow: 0 0 32px rgba(165, 149, 255, .65);
+  }
+}
+
+@keyframes login-satellite-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 1000px) and (min-width: 701px) {
   .login-panel {
     width: 50%;
@@ -288,6 +492,27 @@
 
   .login-form {
     padding: 30px 26px;
+  }
+
+  .login-cosmos {
+    top: 52px;
+    right: 3%;
+    width: 200px;
+    height: 150px;
+  }
+
+  .login-cosmos__orbit {
+    width: 126px;
+    height: 126px;
+  }
+
+  .login-cosmos__orbit--tilted {
+    width: 176px;
+    height: 72px;
+  }
+
+  .login-cosmos__satellite {
+    top: -63px;
   }
 }
 
@@ -318,6 +543,10 @@
   }
 
   .login-panel {
+    display: none;
+  }
+
+  .login-cosmos {
     display: none;
   }
 
@@ -352,11 +581,19 @@
 
 @media (prefers-reduced-motion: reduce) {
   .login-decoration,
+  .login-cosmos,
+  .login-cosmos__star,
+  .login-cosmos__planet,
+  .login-cosmos__satellite-track,
   .login-panel::before,
   .login-panel::after,
   .login-panel > .brand,
   .login-copy,
+  .login-copy .eyebrow,
+  .login-copy-word,
+  .login-copy > p,
   .login-quote,
+  .login-quote p,
   .login-form {
     animation: none;
   }
