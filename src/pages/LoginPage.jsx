@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Icon from '../components/common/Icon'
 import { getSupportWhatsAppUrl } from '../utils/whatsapp'
+import './LoginPage.css'
 
 function Logo() {
   return <div className="brand"><span className="brand-mark">C</span><span>TKA<span className="brand-accent">SD</span></span></div>
