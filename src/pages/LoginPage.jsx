@@ -4,11 +4,17 @@ import { getSupportWhatsAppUrl } from '../utils/whatsapp'
 import './LoginPage.css'
 
 const motivationMessages = [
-  'Setiap kemajuan dimulai dari proses belajar yang konsisten.',
-  'Kesalahan adalah kesempatan untuk memahami lebih baik.',
-  'Langkah kecil hari ini membangun pencapaian esok hari.',
-  'Rasa ingin tahu membuka jalan menuju pengetahuan baru.',
-]
+  'Gantungkan cita-citamu setinggi langit; bermimpilah di siang hari, lalu wujudkan lewat ketekunan. — Soekarno',
+  'Keberhasilan tidak datang dari menunggu, melainkan dari keberanian melangkah dan bekerja keras. — B.J. Habibie',
+  'Di mana pun engkau berada, jadilah bagian terbaik yang memberi manfaat bagi sesama. — Ki Hajar Dewantara',
+  'Teruslah melangkah ke depan dan jangan mudah menyerah menghadapi setiap tantangan. — R.A. Kartini',
+  'Perjuangan besar selalu menuntut ketabahan, kejujuran, dan keyakinan penuh pada proses. — Mohammad Hatta',
+  'Keberanian sejati tampak ketika kita tetap berdiri teguh membela kebenaran dan integritas. — Jenderal Sudirman',
+  'Selama semangat belajar masih menyala, selalu ada jalan untuk memahami hal yang sulit. — Tan Malaka',
+  'Kemenangan diraih oleh mereka yang mampu menjaga fokus dan ketenangan saat situasi genting. — Cut Nyak Dhien',
+  'Disiplin dan kerja keras hari ini adalah fondasi kokoh bagi masa depan yang lebih baik. — Sutan Sjahrir',
+  'Jadikan setiap soal sebagai ajang pembuktian diri bahwa kamu sudah berusaha maksimal. — Ki Hajar Dewantara',
+];
 
 function Logo() {
   return <div className="brand"><span className="brand-mark">C</span><span>TKA<span className="brand-accent">SD</span></span></div>
