@@ -124,7 +124,7 @@ export default function LoginPage({
   <span className="login-copy-word">sendiri.</span>
 </em>
         </h1>
-        <p>Kerjakan ujian, tinjau hasil, dan pantau perkembangan belajarmu melalui satu portal.</p>
+        <p>Langkah kecil hari ini, menjadikanmu lebih baik besok.</p>
       </div>
       <div className="login-quote"><span>“</span><p key={quoteIndex}>{motivationMessages[quoteIndex]}</p></div>
     </div>
