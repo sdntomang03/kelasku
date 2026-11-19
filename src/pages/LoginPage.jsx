@@ -110,18 +110,19 @@ export default function LoginPage({
         <span className="login-cosmos__satellite-track"><span className="login-cosmos__satellite" /></span>
       </div>
       <div className="login-copy">
-        <span className="eyebrow">PORTAL PEMBELAJARAN SISWA</span>
+        <span className="eyebrow">UJIAN BERBASIS KOMPUTER</span>
         <h1>
-          <span className="login-copy-line">
-            <span className="login-copy-word">Belajar</span>{' '}
-            <span className="login-copy-word">terarah,</span>
-          </span>
-          <em className="login-copy-line login-copy-line--accent">
-            <span className="login-copy-word">melangkah</span>{' '}
-            <span className="login-copy-word">lebih</span>{' '}
-            <span className="login-copy-word">percaya</span>{' '}
-            <span className="login-copy-word">diri.</span>
-          </em>
+   <span className="login-copy-line">
+  <span className="login-copy-word">Langkah</span>{' '}
+  <span className="login-copy-word">kecil</span>{' '}
+  <span className="login-copy-word">hari</span>{' '}
+  <span className="login-copy-word">ini,</span>
+</span>
+<em className="login-copy-line login-copy-line--accent">
+  <span className="login-copy-word">lompatan</span>{' '}
+  <span className="login-copy-word">besar</span>{' '}
+  <span className="login-copy-word">nanti.</span>
+</em>
         </h1>
         <p>Kerjakan ujian, tinjau hasil, dan pantau perkembangan belajarmu melalui satu portal.</p>
       </div>
