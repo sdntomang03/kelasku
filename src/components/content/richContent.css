@@ -143,3 +143,23 @@
   display: block;
   flex: 1;
 }
+
+.exam-screen .question-card .question-content {
+  font-size: calc(18px * var(--question-font-scale));
+}
+
+.exam-screen .question-card .answer-options button,
+.exam-screen .question-card .true-false-table {
+  font-size: calc(16px * var(--question-font-scale));
+}
+
+@media (max-width: 700px) {
+  .exam-screen .question-card .question-content {
+    font-size: calc(15px * var(--question-font-scale));
+  }
+
+  .exam-screen .question-card .answer-options button,
+  .exam-screen .question-card .true-false-table {
+    font-size: calc(13px * var(--question-font-scale));
+  }
+}
